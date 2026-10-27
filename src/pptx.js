@@ -1,6 +1,6 @@
 // Exportador a PPTX editable (compatible 100% con Google Slides y PowerPoint).
 // Mantiene los 3 temas (aurora, neon, paper), los 13 layouts, imágenes y notas del profesor.
-import PptxGenJS from 'pptxgenjs';
+import PptxGenJS from './vendor/pptxgen.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 

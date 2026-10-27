@@ -677,10 +677,14 @@ export async function renderDeck(deck, outDir) {
 
   let mermaidSrc = '';
   if (deck.slides.some((s) => s.mermaid)) {
-    await mkdir(path.join(outDir, 'assets'), { recursive: true });
-    const src = require.resolve('mermaid/dist/mermaid.min.js');
-    await copyFile(src, path.join(outDir, 'assets', 'mermaid.min.js'));
-    mermaidSrc = 'assets/mermaid.min.js';
+    try {
+      await mkdir(path.join(outDir, 'assets'), { recursive: true });
+      const src = require.resolve('mermaid/dist/mermaid.min.js');
+      await copyFile(src, path.join(outDir, 'assets', 'mermaid.min.js'));
+      mermaidSrc = 'assets/mermaid.min.js';
+    } catch {
+      mermaidSrc = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+    }
   }
   const html = renderHTML(deck, { themeCss, mermaidSrc });
   const file = path.join(outDir, 'index.html');
@@ -689,56 +693,81 @@ export async function renderDeck(deck, outDir) {
 }
 
 /**
- * Renderiza un HTML 100% portátil en un único archivo (incrusta las imágenes comprimidas en base64 y mermaid inline).
- * Ideal para que OpenClaw te lo envíe por Telegram/WhatsApp/Discord y lo abras en cualquier ordenador del aula sin carpetas ni Wi-Fi.
+ * Renderiza un HTML 100% portátil en un único archivo (incrusta las imágenes en base64 y mermaid inline).
+ * Funciona con Playwright (si está disponible) o en modo cero-dependencias con Node puro.
  */
 export async function renderStandaloneHTML(htmlFile, standaloneFile) {
-  const { chromium } = await import('playwright');
-  const { pathToFileURL } = await import('node:url');
   const baseDir = path.dirname(htmlFile);
   let html = await readFile(htmlFile, 'utf8');
+  const imgFiles = [...new Set([...html.matchAll(/url\(['"]?(images\/[^'")]+)['"]?\)/g)].map((m) => m[1]))];
+  const replacements = {};
 
-  // Usar Chromium un segundo para convertir todas las imágenes locales a JPEG ligeros en base64
-  const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
+  let compressedWithPlaywright = false;
   try {
-    const page = await browser.newPage();
-    const imgFiles = [...new Set([...html.matchAll(/url\(['"]?(images\/[^'")]+)['"]?\)/g)].map((m) => m[1]))];
-    const replacements = {};
+    const { chromium } = await import('playwright');
+    const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
+    try {
+      const page = await browser.newPage();
+      for (const rel of imgFiles) {
+        const abs = path.resolve(baseDir, rel);
+        if (!existsSync(abs)) continue;
+        const buf = await readFile(abs);
+        const ext = path.extname(abs).toLowerCase() === '.png' ? 'png' : 'jpeg';
+        const rawDataUrl = `data:image/${ext};base64,${buf.toString('base64')}`;
+        const jpegDataUrl = await page.evaluate(async (src) => {
+          return new Promise((resolve) => {
+            const im = new Image();
+            im.onload = () => {
+              const maxW = 1280;
+              const scale = Math.min(1, maxW / (im.naturalWidth || 1024));
+              const c = document.createElement('canvas');
+              c.width = Math.round((im.naturalWidth || 1024) * scale);
+              c.height = Math.round((im.naturalHeight || 1024) * scale);
+              const ctx = c.getContext('2d');
+              ctx.fillStyle = '#0b0d17';
+              ctx.fillRect(0, 0, c.width, c.height);
+              ctx.drawImage(im, 0, 0, c.width, c.height);
+              resolve(c.toDataURL('image/jpeg', 0.78));
+            };
+            im.onerror = () => resolve(src);
+            im.src = src;
+          });
+        }, rawDataUrl);
+        replacements[rel] = jpegDataUrl;
+      }
+      compressedWithPlaywright = true;
+    } finally {
+      await browser.close();
+    }
+  } catch {
+    // Fallback cero-dependencias (sin Playwright): intenta comprimir a JPEG con ffmpeg/python3/convert o incrusta en base64 directo
+    const { execFileSync } = await import('node:child_process');
     for (const rel of imgFiles) {
       const abs = path.resolve(baseDir, rel);
       if (!existsSync(abs)) continue;
-      const buf = await readFile(abs);
-      const ext = path.extname(abs).toLowerCase() === '.png' ? 'png' : 'jpeg';
-      const rawDataUrl = `data:image/${ext};base64,${buf.toString('base64')}`;
-      const jpegDataUrl = await page.evaluate(async (src) => {
-        return new Promise((resolve) => {
-          const im = new Image();
-          im.onload = () => {
-            const maxW = 1280;
-            const scale = Math.min(1, maxW / (im.naturalWidth || 1024));
-            const c = document.createElement('canvas');
-            c.width = Math.round((im.naturalWidth || 1024) * scale);
-            c.height = Math.round((im.naturalHeight || 1024) * scale);
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = '#0b0d17';
-            ctx.fillRect(0, 0, c.width, c.height);
-            ctx.drawImage(im, 0, 0, c.width, c.height);
-            resolve(c.toDataURL('image/jpeg', 0.78));
-          };
-          im.onerror = () => resolve(src);
-          im.src = src;
-        });
-      }, rawDataUrl);
-      replacements[rel] = jpegDataUrl;
+      let jpegBuf = null;
+      try {
+        jpegBuf = execFileSync('ffmpeg', ['-v', 'error', '-i', abs, '-vf', "scale='min(1280,iw)':-1", '-q:v', '5', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-'], { stdio: ['ignore', 'pipe', 'ignore'] });
+      } catch {
+        try {
+          jpegBuf = execFileSync('convert', [abs, '-resize', '1280x1280>', '-quality', '78', 'jpeg:-'], { stdio: ['ignore', 'pipe', 'ignore'] });
+        } catch {}
+      }
+      if (jpegBuf && jpegBuf.length > 100) {
+        replacements[rel] = `data:image/jpeg;base64,${jpegBuf.toString('base64')}`;
+      } else {
+        const buf = await readFile(abs);
+        const ext = path.extname(abs).toLowerCase() === '.png' ? 'png' : 'jpeg';
+        replacements[rel] = `data:image/${ext};base64,${buf.toString('base64')}`;
+      }
     }
-    for (const [rel, dataUrl] of Object.entries(replacements)) {
-      html = html.split(`'${rel}'`).join(`'${dataUrl}'`).split(`"${rel}"`).join(`"${dataUrl}"`);
-    }
-  } finally {
-    await browser.close();
   }
 
-  // Si usa mermaid externo, incrustarlo inline también
+  for (const [rel, dataUrl] of Object.entries(replacements)) {
+    html = html.split(`'${rel}'`).join(`'${dataUrl}'`).split(`"${rel}"`).join(`"${dataUrl}"`);
+  }
+
+  // Si usa mermaid externo local, incrustarlo inline también
   if (html.includes('<script src="assets/mermaid.min.js"></script>')) {
     const mPath = path.join(baseDir, 'assets', 'mermaid.min.js');
     if (existsSync(mPath)) {

@@ -1,5 +1,4 @@
-// Motor de imágenes: genera una imagen por diapositiva con la API de OpenAI y las cachea por hash.
-import OpenAI from 'openai';
+// Motor de imágenes: genera una imagen por diapositiva con la API de OpenAI usando fetch nativo (0 dependencias npm).
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -7,7 +6,6 @@ import path from 'node:path';
 
 const IMAGE_MODEL = () => process.env.SLIDES_IMAGE_MODEL || 'gpt-image-2.5-flare';
 const IMAGE_QUALITY = () => process.env.SLIDES_IMAGE_QUALITY || 'medium';
-const IMAGE_SIZE = () => process.env.SLIDES_IMAGE_SIZE || '1536x1024';
 
 const NO_TEXT = 'Absolutely no text, letters, numbers, watermarks or logos in the image.';
 
@@ -15,9 +13,6 @@ const NO_TEXT = 'Absolutely no text, letters, numbers, watermarks or logos in th
 const FULL_BLEED = ['cover', 'question', 'quote', 'big-number'];
 
 export function getSlideImageSize(slide) {
-  if (process.env.SLIDES_IMAGE_SIZE && process.env.SLIDES_IMAGE_SIZE !== 'auto') {
-    return FULL_BLEED.includes(slide.layout) ? '1536x864' : '1024x1024';
-  }
   return FULL_BLEED.includes(slide.layout) ? '1536x864' : '1024x1024';
 }
 
@@ -37,13 +32,14 @@ async function pool(items, limit, fn) {
 }
 
 /**
- * Genera las imágenes que falten. Modifica deck.slides[i].image con la ruta relativa.
+ * Genera las imágenes que falten usando fetch nativo contra la API de OpenAI (sin requerir npm install).
  * @param {object} deck
  * @param {string} outDir carpeta de la presentación (contendrá images/)
  */
 export async function generateImages(deck, outDir, { log = console.log, force = false, only = null } = {}) {
-  if (!process.env.OPENAI_API_KEY) throw new Error('Falta OPENAI_API_KEY para generar imágenes.');
-  const openai = new OpenAI();
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('Falta OPENAI_API_KEY para generar imágenes.');
+  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
   const imgDir = path.join(outDir, 'images');
   await mkdir(imgDir, { recursive: true });
 
@@ -63,16 +59,28 @@ export async function generateImages(deck, outDir, { log = console.log, force = 
       return;
     }
     try {
-      const res = await openai.images.generate({
-        model: IMAGE_MODEL(),
-        prompt,
-        size,
-        quality: IMAGE_QUALITY(),
-        n: 1,
+      const resp = await fetch(`${baseUrl}/images/generations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: IMAGE_MODEL(),
+          prompt,
+          size,
+          quality: IMAGE_QUALITY(),
+          n: 1,
+        }),
       });
-      const b64 = res.data[0].b64_json;
+      if (!resp.ok) {
+        const errTxt = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${errTxt.slice(0, 200)}`);
+      }
+      const res = await resp.json();
+      const b64 = res.data?.[0]?.b64_json;
       if (b64) await writeFile(abs, Buffer.from(b64, 'base64'));
-      else {
+      else if (res.data?.[0]?.url) {
         const r = await fetch(res.data[0].url);
         await writeFile(abs, Buffer.from(await r.arrayBuffer()));
       }

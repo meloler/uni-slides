@@ -1,5 +1,4 @@
-// Planificador pedagógico: convierte el temario (texto) en deck.json con OpenAI (Structured Outputs).
-import OpenAI from 'openai';
+// Planificador pedagógico: convierte el temario (texto) en deck.json con OpenAI (Structured Outputs) usando fetch nativo (0 dependencias npm).
 import { DECK_SCHEMA, LAYOUTS, SLIDE_SCHEMA, normalizeDeck } from './schema.js';
 import { lintDeck, formatIssues } from './lint.js';
 
@@ -44,17 +43,27 @@ ${layoutDocs}
 - mermaid: código Mermaid válido y simple (flowchart LR/TD o mindmap), etiquetas cortas entre comillas, máx. 8 nodos.
 - kicker: etiqueta corta sobre el título (ej. "Bloque 2", "Caso real", "Dato clave"), o null.`;
 
-function client() {
-  if (!process.env.OPENAI_API_KEY) throw new Error('Falta OPENAI_API_KEY (ponla en .env o en el entorno).');
-  return new OpenAI();
-}
-
 async function callJSON(messages, schema, name) {
-  const res = await client().chat.completions.create({
-    model: TEXT_MODEL(),
-    messages,
-    response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('Falta OPENAI_API_KEY (ponla en .env o en el entorno).');
+  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const resp = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: TEXT_MODEL(),
+      messages,
+      response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+    }),
   });
+  if (!resp.ok) {
+    const errTxt = await resp.text();
+    throw new Error(`OpenAI HTTP ${resp.status}: ${errTxt.slice(0, 300)}`);
+  }
+  const res = await resp.json();
   const msg = res.choices[0].message;
   if (msg.refusal) throw new Error('El modelo rechazó la petición: ' + msg.refusal);
   return JSON.parse(msg.content);

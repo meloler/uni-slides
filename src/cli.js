@@ -84,14 +84,18 @@ async function finish(deck, outDir, args, log) {
   log(`✔ HTML Portátil (1 solo archivo con imágenes incrustadas): ${standalone}`);
   const result = { outDir, deck: path.join(outDir, 'deck.json'), html, standalone, slides: deck.slides.length };
   if (args.pdf || args.png) {
-    const { exportPDF } = await import('./pdf.js');
-    let shots = null;
-    if (args.png) await mkdir((shots = path.join(outDir, 'png')), { recursive: true });
-    const pdf = path.join(outDir, `${slug(deck.title)}.pdf`);
-    await exportPDF(html, pdf, { screenshotsDir: shots });
-    log(`✔ PDF: ${pdf}`);
-    result.pdf = pdf;
-    if (shots) result.png = shots;
+    try {
+      const { exportPDF } = await import('./pdf.js');
+      let shots = null;
+      if (args.png) await mkdir((shots = path.join(outDir, 'png')), { recursive: true });
+      const pdf = path.join(outDir, `${slug(deck.title)}.pdf`);
+      await exportPDF(standalone, pdf, { screenshotsDir: shots });
+      log(`✔ PDF: ${pdf}`);
+      result.pdf = pdf;
+      if (shots) result.png = shots;
+    } catch (e) {
+      log(`⚠ PDF directo no disponible en este contenedor (${e.message}). Puedes abrir ${path.basename(standalone)} en el navegador y pulsar Ctrl+P -> Guardar como PDF.`);
+    }
   }
   if (args.pptx) {
     const { exportPPTX } = await import('./pptx.js');
