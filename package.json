@@ -1,0 +1,26 @@
+{
+  "name": "uni-slides",
+  "version": "1.0.0",
+  "description": "Generador de presentaciones universitarias con IA (Modo Profesor Guiado + Efectos Beatdeck + Consola de Presentador en Pantalla 1 + Skill OpenClaw)",
+  "main": "src/cli.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "example": "node src/cli.js render examples/embudo-marketing.json --out out/ejemplo --pdf --png",
+    "slides": "node src/cli.js"
+  },
+  "keywords": ["slides", "openclaw", "presentations", "education"],
+  "author": "meloler",
+  "license": "ISC",
+  "dependencies": {
+    "mermaid": "^12.2.0",
+    "openai": "^7.43.0",
+    "playwright": "^1.64.1",
+    "pptxgenjs": "^4.0.1"
+  },
+  "type": "module",
+  "bin": {
+    "slides": "src/cli.js"
+  }
+}
