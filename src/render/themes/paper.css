@@ -1,0 +1,18 @@
+/* Paper — claro académico, tipografía editorial con serifa. */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;700&display=swap');
+:root {
+  --font-head: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --head-weight: 700; --head-tracking: -0.02em;
+  --bg: #f6f1e9; --bg-2: #ebe3d5;
+  --fg: #1c1a17; --fg-soft: #2f2b26; --muted: #6e665b;
+  --accent: #d9480f; --accent-2: #1864ab; --accent-3: #f2b43c;
+  --accent-glow: rgba(217, 72, 15, .18);
+  --grad: linear-gradient(120deg, #d9480f 0%, #f08c00 100%);
+  --glow: radial-gradient(1000px 600px at 100% 0%, rgba(242,180,60,.20), transparent 60%);
+  --overlay: linear-gradient(90deg, rgba(246,241,233,.97) 0%, rgba(246,241,233,.85) 45%, rgba(246,241,233,.1) 100%);
+  --card: #fffdf9; --card-border: rgba(28,26,23,.08);
+  --radius: 22px; --radius-lg: 28px;
+  --shadow: 0 14px 40px rgba(60,40,10,.08); --shadow-lg: 0 30px 70px rgba(60,40,10,.18);
+  --mermaid-text: #1c1a17; --mermaid-node: #fffdf9; --mermaid-line: #d9480f;
+}

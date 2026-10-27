@@ -1,0 +1,133 @@
+{
+  "title": "El embudo de marketing digital",
+  "subtitle": "Cómo convertir desconocidos en clientes fieles",
+  "author": "Marketing Digital · Tema 3",
+  "hook": "¿Por qué acabas comprando en una marca que hace un mes ni conocías?",
+  "theme": "aurora",
+  "image_style": "editorial 3D illustration, soft studio lighting, clean minimal background, deep indigo, violet and coral palette, high detail",
+  "slides": [
+    {
+      "layout": "cover",
+      "kicker": "Tema 3",
+      "title": "El embudo de marketing digital",
+      "subtitle": "Cómo convertir desconocidos en clientes fieles",
+      "image_prompt": "a glowing translucent funnel floating in space with small light particles flowing down through it",
+      "notes": "Presentación del tema."
+    },
+    {
+      "layout": "question",
+      "title": "¿Por qué acabas comprando en una marca que hace un mes ni conocías?",
+      "image_prompt": "a young student looking at a phone screen in a dark room, face lit by the screen, curious expression",
+      "notes": "Preguntar en voz alta: ¿qué compraste la última vez por un anuncio de Instagram o TikTok? Recoger 2-3 ejemplos."
+    },
+    {
+      "layout": "agenda",
+      "title": "Tres preguntas para entender el viaje del cliente",
+      "steps": [
+        { "label": "¿Cómo te descubren?", "text": "Atracción y notoriedad de marca" },
+        { "label": "¿Por qué te eligen?", "text": "Consideración, confianza y conversión" },
+        { "label": "¿Por qué vuelven?", "text": "Fidelización y recomendación" }
+      ],
+      "notes": "Estas tres subpreguntas estructuran toda la clase."
+    },
+    {
+      "layout": "section",
+      "kicker": "Bloque 1",
+      "title": "¿Cómo te descubren?",
+      "subtitle": "La parte alta del embudo (TOFU)",
+      "notes": ""
+    },
+    {
+      "layout": "concept",
+      "kicker": "Atracción",
+      "title": "Nadie compra lo que **no sabe que existe**",
+      "bullets": ["El objetivo es **alcance**, no ventas", "Contenido útil o entretenido", "Métricas: impresiones, alcance, CPM"],
+      "image_prompt": "a lighthouse beam sweeping over a sea of tiny people, some of them turning their heads towards the light",
+      "notes": "Explicar que en TOFU vender directamente suele espantar. Ejemplo: vídeos educativos de marcas en TikTok."
+    },
+    {
+      "layout": "big-number",
+      "big_number": "~8",
+      "big_number_label": "impactos de media antes de que alguien recuerde una marca",
+      "title": "La repetición construye memoria",
+      "body": "Por eso las campañas de notoriedad duran semanas, no días.",
+      "notes": "Regla de los 7-8 impactos (aproximada, viene de la 'Rule of 7'). Matizar que es una heurística, no una ley."
+    },
+    {
+      "layout": "section",
+      "kicker": "Bloque 2",
+      "title": "¿Por qué te eligen?",
+      "subtitle": "Consideración y conversión (MOFU / BOFU)",
+      "image_prompt": "a hand hesitating between two glowing doors, one slightly open with warm light",
+      "notes": ""
+    },
+    {
+      "layout": "process",
+      "title": "El embudo AIDA guía cada paso hacia la compra",
+      "steps": [
+        { "label": "Atención", "text": "Un anuncio que rompe el scroll" },
+        { "label": "Interés", "text": "Contenido que resuelve una duda" },
+        { "label": "Deseo", "text": "Prueba social y beneficios claros" },
+        { "label": "Acción", "text": "Una llamada a la acción sin fricción" }
+      ],
+      "notes": "AIDA (E. St. Elmo Lewis, 1898) sigue siendo la base de los embudos modernos."
+    },
+    {
+      "layout": "comparison",
+      "title": "La conversión depende más de la confianza que del precio",
+      "columns": [
+        { "heading": "Lo que frena", "bullets": ["Costes de envío ocultos", "Registro obligatorio", "Cero reseñas"] },
+        { "heading": "Lo que impulsa", "bullets": ["**Reseñas** de otros clientes", "Pago en un clic", "Devolución gratuita"] }
+      ],
+      "notes": "Relacionar con el abandono de carrito. Pedir a los alumnos que piensen en su última compra abandonada."
+    },
+    {
+      "layout": "diagram",
+      "title": "Cada etapa del embudo tiene su propio contenido",
+      "mermaid": "flowchart LR\n  A[\"TOFU<br/>Reels · Blog · SEO\"] --> B[\"MOFU<br/>Guías · Webinars · Email\"]\n  B --> C[\"BOFU<br/>Demo · Oferta · Reseñas\"]\n  C --> D[\"Fidelización<br/>Comunidad · Programa VIP\"]",
+      "body": "Un error típico: usar contenido BOFU con gente que aún no te conoce.",
+      "notes": "Recorrer el diagrama de izquierda a derecha con un ejemplo de marca."
+    },
+    {
+      "layout": "section",
+      "kicker": "Bloque 3",
+      "title": "¿Por qué vuelven?",
+      "subtitle": "Fidelización: el embudo no acaba en la compra",
+      "notes": ""
+    },
+    {
+      "layout": "example",
+      "title": "Spotify Wrapped convierte a sus usuarios en **anunciantes gratuitos**",
+      "body": "Cada diciembre, millones de personas comparten sus estadísticas en redes. La fidelización alimenta de nuevo la parte alta del embudo.",
+      "image_prompt": "colorful abstract music data visualization bursting out of a smartphone, confetti of sound waves",
+      "notes": "Caso de marketing de fidelización que genera adquisición (efecto flywheel)."
+    },
+    {
+      "layout": "quote",
+      "quote": "Es más barato conservar a un cliente que conseguir uno nuevo.",
+      "quote_author": "Principio clásico de marketing relacional",
+      "notes": "Se suele citar que captar cuesta 5 veces más que retener (dato orientativo)."
+    },
+    {
+      "layout": "summary",
+      "title": "Compras a marcas nuevas porque te guiaron, paso a paso, por su embudo",
+      "bullets": [
+        "**Atraer**: aparecer donde ya está tu público",
+        "**Convencer**: reducir dudas con confianza y prueba social",
+        "**Convertir**: eliminar fricción en la compra",
+        "**Fidelizar**: convertir clientes en altavoces"
+      ],
+      "notes": "Volver a los ejemplos que dieron los alumnos al principio y situarlos en el embudo."
+    },
+    {
+      "layout": "quiz",
+      "title": "Comprueba lo que has aprendido",
+      "questions": [
+        "¿Qué métrica usarías para medir el éxito en la parte alta del embudo?",
+        "Pon un ejemplo de contenido MOFU para una marca de zapatillas.",
+        "¿Por qué Spotify Wrapped es fidelización y adquisición a la vez?"
+      ],
+      "notes": "Se pueden usar como preguntas de debate en grupos de 3."
+    }
+  ]
+}

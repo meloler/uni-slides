@@ -1,0 +1,21 @@
+/* Neon — tecnológico, negro profundo con cian/verde eléctrico. Ideal para clases de tecnología. */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;700&display=swap');
+:root {
+  --font-head: 'Sora', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --head-weight: 700; --head-tracking: -0.03em;
+  --bg: #04070b; --bg-2: #0b1520;
+  --fg: #eafff7; --fg-soft: #cfeee4; --muted: #7fa69b;
+  --accent: #00e5a8; --accent-2: #00a3ff; --accent-3: #b6ff3b;
+  --accent-glow: rgba(0, 229, 168, .35);
+  --grad: linear-gradient(120deg, #00a3ff 0%, #00e5a8 100%);
+  --glow: radial-gradient(1000px 700px at 100% 0%, rgba(0,163,255,.20), transparent 60%),
+          radial-gradient(800px 500px at 0% 100%, rgba(0,229,168,.14), transparent 60%),
+          repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 64px),
+          repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 64px);
+  --overlay: linear-gradient(90deg, rgba(4,7,11,.95) 0%, rgba(4,7,11,.75) 45%, rgba(4,7,11,.15) 100%);
+  --card: rgba(0,229,168,.045); --card-border: rgba(0,229,168,.20);
+  --radius: 18px; --radius-lg: 24px;
+  --shadow: 0 20px 60px rgba(0,0,0,.5); --shadow-lg: 0 40px 100px rgba(0,0,0,.6);
+  --mermaid-text: #eafff7; --mermaid-node: #0b1a24; --mermaid-line: #00e5a8;
+}

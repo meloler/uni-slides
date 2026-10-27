@@ -1,0 +1,19 @@
+/* Aurora — oscuro elegante, degradados violeta/coral. Ideal para marketing. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;700&display=swap');
+:root {
+  --font-head: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --head-weight: 700; --head-tracking: -0.025em;
+  --bg: #0a0d1c; --bg-2: #151a36;
+  --fg: #f5f6ff; --fg-soft: #dfe3fb; --muted: #9aa3cc;
+  --accent: #ff7a6b; --accent-2: #8b6bff; --accent-3: #3cc4ff;
+  --accent-glow: rgba(255, 122, 107, .35);
+  --grad: linear-gradient(120deg, #8b6bff 0%, #ff7a6b 100%);
+  --glow: radial-gradient(1100px 700px at 95% -10%, rgba(139,107,255,.28), transparent 60%),
+          radial-gradient(900px 600px at -10% 110%, rgba(255,122,107,.18), transparent 60%);
+  --overlay: linear-gradient(90deg, rgba(10,13,28,.94) 0%, rgba(10,13,28,.72) 45%, rgba(10,13,28,.15) 100%);
+  --card: rgba(255,255,255,.055); --card-border: rgba(255,255,255,.10);
+  --radius: 28px; --radius-lg: 36px;
+  --shadow: 0 20px 60px rgba(0,0,0,.35); --shadow-lg: 0 40px 100px rgba(0,0,0,.55);
+  --mermaid-text: #f5f6ff; --mermaid-node: #1d2350; --mermaid-line: #8b6bff;
+}
