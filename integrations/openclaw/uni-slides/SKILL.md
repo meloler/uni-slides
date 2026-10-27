@@ -45,7 +45,34 @@ El profesor a veces imparte temas que no domina al 100%, no siempre puede ver la
 
 ---
 
-## 2. Estructura de la presentación (34 a 42 diapositivas)
+## 2. Estructura y Estilo de la presentación (34 a 42 diapositivas)
+
+### 🎨 Elección de Tema Visual y Estilo de Imágenes (¡Pregunta al usuario o ajústalo a la asignatura!)
+`deck.json` tiene dos campos clave en la raíz:
+- **`"theme"`**: define la paleta, fondo y tipografía de la presentación.
+  - `"aurora"` (por defecto): **Modo oscuro premium** (fondo azul/negro noche `#0a0d1c`, degradados violeta/coral y tipografía moderna `Space Grotesk`). Es el estilo visual más impactante y cinematográfico.
+  - `"neon"`: **Modo oscuro ciber/tech** (fondo negro profundo `#04070b`, cian y verde eléctrico con tipografía `Sora`). Ideal para tecnología, código, IA o ciberseguridad.
+  - `"paper"`: **Modo claro editorial** (fondo crema `#f6f1e9`, acento terracota/azul marino y serifa elegante `Fraunces`).
+  *(Si el usuario pide un color o tema concreto, puedes usar uno de estos o cambiar `--theme` al compilar).*
+
+- **`"image_style"`**: directriz de estilo que se suma a todos los prompts de imagen para que la IA genere imágenes con alta dirección de arte en vez de fotos genéricas:
+  - Para estilo artístico/vectorial metafórico (como el que más le gusta al usuario):
+    `"image_style": "minimalist abstract 3D editorial illustration, clean vector curves, vibrant warm and violet palette, artistic metaphor, studio lighting, high resolution"`
+  - Para estilo fotográfico cinematográfico:
+    `"image_style": "cinematic 35mm photography, subtle film grain, dramatic documentary lighting, natural candid composition, highly detailed"`
+  - Para infografía / diseño tecnológico:
+    `"image_style": "isometric 3D tech visualization, sleek glassmorphism elements, neon accents, dark sleek background"`
+
+### 📸 Calidad y prompts de imágenes (`image_prompt`):
+- Los `image_prompt` se escriben siempre en **inglés**.
+- **No describas clips de oficina ni iconos genéricos con candados o checkmarks aburridos.** Describe conceptos artísticos, metáforas visuales, personas en acción realista o composiciones editoriales:
+  - ❌ Cutre / genérico: *"A cartoon folder with a green tick icon and a lock"*
+  - ✔️ Editorial / impactante: *"Abstract layered human profile made of evolving organic ribbons and geometric shapes representing personal growth and digital identity, warm sunset colors on dark background"*
+- Si no hay `OPENAI_API_KEY` en el entorno o la API falla, el sistema usará placeholders. Asegúrate de que OpenClaw tenga configurada la clave en `.env`.
+
+---
+
+## 3. Estructura de la sesión paso a paso
 
 1. **`cover`** — Portada atractiva.
 2. **`question`** — **LA GRAN PREGUNTA** de la sesión (≤14 palabras).
@@ -60,7 +87,7 @@ El profesor a veces imparte temas que no domina al 100%, no siempre puede ver la
 
 ---
 
-## 3. Reglas validadas por `lint`
+## 4. Reglas validadas por `lint`
 
 - **Titulares (`title`):** Afirmación completa con verbo y conclusión, entre **4 y 15 palabras**.
 - **Bullets:** Máximo **3 bullets** por diapositiva (4 en `summary`), de **12 a 26 palabras** cada uno, empezando por `**Concepto en negrita**: explicación...`.
@@ -70,7 +97,7 @@ El profesor a veces imparte temas que no domina al 100%, no siempre puede ver la
 
 ---
 
-## 4. Flujo paso a paso
+## 5. Flujo paso a paso
 
 1. **Escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`** directamente con tu propio razonamiento.
 2. **Valida con `lint` (gratis, instantáneo):**
