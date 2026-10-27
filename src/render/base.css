@@ -297,88 +297,81 @@ ul.bullets li::before {
   }
   .pr-top {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 12px 22px; background: #111522; border-bottom: 1px solid rgba(255,255,255,.1);
+    padding: 10px 22px; background: #101420; border-bottom: 1px solid rgba(255,255,255,.08);
   }
   .pr-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .pr-badge {
-    background: var(--grad); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: .08em;
-    padding: 5px 10px; border-radius: 6px; white-space: nowrap;
+  .pr-pos-badge { font-size: 16px; font-weight: 800; color: #fff; }
+  .pr-step-badge {
+    font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(255,255,255,.05);
+    border: 1px solid var(--accent); padding: 4px 12px; border-radius: 999px;
   }
-  .pr-deck-title { font-size: 14px; color: #9ca3af; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pr-timer-box { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.04); padding: 4px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); }
-  .pr-clock { font-family: ui-monospace, monospace; font-size: 22px; font-weight: 800; color: #34d399; letter-spacing: .04em; margin-right: 4px; }
+  .pr-clock { font-family: ui-monospace, monospace; font-size: 20px; font-weight: 800; color: #34d399; letter-spacing: .04em; margin-right: 2px; }
   .pr-actions { display: flex; align-items: center; gap: 8px; }
   .pr-btn {
     background: #1e2436; color: #e5e7eb; border: 1px solid rgba(255,255,255,.14); border-radius: 8px;
-    padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s;
   }
+  .pr-btn-sm { padding: 5px 9px; font-size: 12px; }
   .pr-btn:hover { background: #2a324b; border-color: rgba(255,255,255,.28); }
   .pr-btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
   .pr-btn-primary:hover { filter: brightness(1.1); background: var(--accent); }
 
   .pr-main {
-    flex: 1; min-height: 0; display: grid; grid-template-columns: 1.35fr 0.95fr; gap: 20px; padding: 20px 22px;
+    flex: 1; min-height: 0; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; padding: 20px 24px;
   }
-  .pr-script-col { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; padding-right: 4px; }
-  .pr-status-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .pr-pos-badge { font-size: 15px; font-weight: 700; color: #e5e7eb; }
-  .pr-step-badge {
-    font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(255,255,255,.05);
-    border: 1px solid var(--accent); padding: 4px 12px; border-radius: 999px;
-  }
+  .pr-script-col { display: flex; flex-direction: column; min-height: 0; }
 
   .pr-now-card {
-    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-    border: 1px solid rgba(255,255,255,.14); border-left: 6px solid var(--accent);
-    border-radius: 14px; padding: 18px 22px; box-shadow: 0 12px 32px rgba(0,0,0,.35);
+    flex: 1; min-height: 0; display: flex; flex-direction: column;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.13); border-left: 7px solid var(--accent);
+    border-radius: 16px; padding: 24px 28px; box-shadow: 0 14px 36px rgba(0,0,0,.4);
   }
-  .pr-card-label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
-  .pr-now-title { font-size: 24px; font-weight: 800; color: #fff; line-height: 1.25; margin-bottom: 10px; }
-  .pr-now-body { font-size: 19px; line-height: 1.5; color: #f3f4f6; white-space: pre-line; }
+  .pr-script-header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .pr-card-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .pr-now-title { font-size: 28px; font-weight: 800; color: #fff; line-height: 1.2; }
+  .pr-dots { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+  .pr-dot {
+    background: rgba(255,255,255,.07); color: #9ca3af; border: 1px solid rgba(255,255,255,.12);
+    border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .pr-dot:hover { background: rgba(255,255,255,.14); color: #fff; }
+  .pr-dot.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pr-dot.done { opacity: .55; }
 
-  .pr-next-card {
-    background: rgba(255,255,255,.03); border: 1px dashed rgba(255,255,255,.18);
-    border-radius: 12px; padding: 12px 18px;
+  .pr-now-body {
+    flex: 1; overflow-y: auto; font-size: 24px; line-height: 1.55; color: #f9fafb;
+    white-space: pre-line; padding-right: 6px;
   }
-  .pr-next-body { font-size: 15px; line-height: 1.45; color: #d1d5db; }
-
-  .pr-beats-timeline { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
-  .pr-tl-item {
-    display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; border-radius: 10px;
-    background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07);
-    cursor: pointer; transition: background .15s, border-color .15s;
+  .pr-next-hint {
+    margin-top: 16px; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,.14);
+    font-size: 15px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .pr-tl-item:hover { background: rgba(255,255,255,.06); }
-  .pr-tl-item.active {
-    background: rgba(255,255,255,.08); border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-  .pr-tl-item.done { opacity: .48; }
-  .pr-tl-num {
-    flex: 0 0 26px; height: 26px; border-radius: 7px; background: rgba(255,255,255,.1);
-    color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center;
-  }
-  .pr-tl-item.active .pr-tl-num { background: var(--accent); }
-  .pr-tl-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .pr-tl-txt b { font-size: 14px; color: #fff; }
-  .pr-tl-txt span { font-size: 13px; color: #9ca3af; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pr-next-hint b { color: #e5e7eb; font-weight: 600; }
 
   .pr-side-col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
   .pr-mini-wrap {
-    flex: 1; min-height: 220px; background: #111522; border: 1px solid rgba(255,255,255,.12);
-    border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    background: #111522; border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 0;
   }
-  .pr-mini-label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #9ca3af; }
-  .pr-mini-stage { flex: 1; position: relative; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .pr-curr-wrap { flex: 1.25; }
+  .pr-next-wrap { flex: 0.9; opacity: .92; }
+  .pr-mini-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pr-mini-label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+  .pr-next-wrap .pr-mini-label { color: #9ca3af; }
+  .pr-mini-sub { font-size: 12px; color: #9ca3af; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-mini-stage {
+    flex: 1; position: relative; background: #000; border-radius: 10px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.08);
+  }
+  .pr-next-stage.is-end::after {
+    content: '🏁 Fin de la presentación'; color: #6b7280; font-size: 16px; font-weight: 600;
+  }
   body.is-presenter .pr-mini-stage .stage { position: absolute; inset: 0; pointer-events: none; }
-
-  .pr-upnext-wrap {
-    background: #111522; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 14px 16px;
-  }
-  .pr-upnext-box { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
-  .pr-up-kicker { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
-  .pr-up-title { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.3; }
-  .pr-up-notes { font-size: 13px; color: #9ca3af; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
 @keyframes rise { to { opacity: 1; transform: none; } }
 @keyframes kenburns { from { transform: scale(1.08); } to { transform: scale(1); } }

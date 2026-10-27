@@ -223,50 +223,50 @@ ${slides}
 <div class="presenter-ui" id="presenter-ui">
   <header class="pr-top">
     <div class="pr-brand">
-      <span class="pr-badge">🎙️ CONSOLA DEL PROFESOR (PANTALLA 1)</span>
-      <span class="pr-deck-title">${esc(deck.title.replace(/\*\*/g, ''))}</span>
+      <span class="pr-pos-badge" id="pr-pos-badge">1 / ${total}</span>
+      <span class="pr-step-badge" id="pr-step-badge">Apertura</span>
     </div>
     <div class="pr-timer-box">
       <span class="pr-clock" id="pr-timer">00:00</span>
-      <button class="pr-btn" id="pr-timer-toggle">⏸ Pausar</button>
-      <button class="pr-btn" id="pr-timer-reset">↺ Reiniciar</button>
+      <button class="pr-btn pr-btn-sm" id="pr-timer-toggle" title="Pausar/Reanudar">⏸</button>
+      <button class="pr-btn pr-btn-sm" id="pr-timer-reset" title="Reiniciar reloj">↺</button>
     </div>
     <div class="pr-actions">
       <button class="pr-btn" id="pr-prev">← Anterior</button>
-      <button class="pr-btn pr-btn-primary" id="pr-next">Siguiente pulso (Espacio) →</button>
-      <button class="pr-btn" id="pr-blackout" title="Tecla B">⬛ Pantalla negra (B)</button>
+      <button class="pr-btn pr-btn-primary" id="pr-next">Siguiente (Espacio) →</button>
+      <button class="pr-btn" id="pr-blackout" title="Tecla B: Pantalla en negro">⬛ Negro (B)</button>
     </div>
   </header>
 
   <main class="pr-main">
     <section class="pr-script-col">
-      <div class="pr-status-bar">
-        <span class="pr-pos-badge" id="pr-pos-badge">Diapositiva 1 / ${total}</span>
-        <span class="pr-step-badge" id="pr-step-badge">Intro de diapositiva</span>
-      </div>
-
       <div class="pr-now-card">
-        <div class="pr-card-label" id="pr-now-label">🗣️ QUÉ EXPLICAR EN ESTE PULSO</div>
-        <div class="pr-now-title" id="pr-now-title"></div>
+        <div class="pr-script-header">
+          <div>
+            <div class="pr-card-label" id="pr-now-label">GUION PARA DECIR AHORA</div>
+            <div class="pr-now-title" id="pr-now-title"></div>
+          </div>
+          <div class="pr-dots" id="pr-dots"></div>
+        </div>
         <div class="pr-now-body" id="pr-now-body"></div>
+        <div class="pr-next-hint" id="pr-next-body"></div>
       </div>
-
-      <div class="pr-next-card">
-        <div class="pr-card-label">⏭️ QUÉ VIENE EN EL SIGUIENTE CLIC</div>
-        <div class="pr-next-body" id="pr-next-body"></div>
-      </div>
-
-      <div class="pr-beats-timeline" id="pr-beats-timeline"></div>
     </section>
 
     <aside class="pr-side-col">
-      <div class="pr-mini-wrap">
-        <div class="pr-mini-label">📺 EN PROYECTOR AHORA (PANTALLA 2)</div>
+      <div class="pr-mini-wrap pr-curr-wrap">
+        <div class="pr-mini-head">
+          <span class="pr-mini-label">📺 EN PROYECTOR AHORA</span>
+          <span class="pr-mini-sub" id="pr-curr-sub"></span>
+        </div>
         <div class="pr-mini-stage" id="pr-mini-stage"></div>
       </div>
-      <div class="pr-upnext-wrap">
-        <div class="pr-mini-label">🔜 SIGUIENTE DIAPOSITIVA</div>
-        <div class="pr-upnext-box" id="pr-upnext-box"></div>
+      <div class="pr-mini-wrap pr-next-wrap">
+        <div class="pr-mini-head">
+          <span class="pr-mini-label">🔜 SIGUIENTE DIAPOSITIVA</span>
+          <span class="pr-mini-sub" id="pr-next-sub"></span>
+        </div>
+        <div class="pr-mini-stage pr-next-stage" id="pr-next-stage"></div>
       </div>
     </aside>
   </main>
@@ -294,6 +294,7 @@ const RUNTIME = String.raw`
   const laser = document.getElementById('laser');
 
   // En modo presentador, movemos el escenario en miniatura a la columna derecha
+  let nextDeck = null, nextSlides = [];
   if (isPresenter) {
     const mini = document.getElementById('pr-mini-stage');
     if (mini && stage) mini.appendChild(stage);
@@ -379,8 +380,8 @@ const RUNTIME = String.raw`
 
     if (totalB === 0 || bIdx === 0) {
       return {
-        badge: totalB > 0 ? ('Pulso 0 / ' + totalB + ' · Apertura de diapositiva') : 'Diapositiva completa',
-        label: '🎙️ GUION DE APERTURA (PARA AMPLIAR EL TITULAR ANTES DEL PRIMER CLIC)',
+        badge: totalB > 0 ? ('Apertura · Pulso 0/' + totalB) : 'Diapositiva completa',
+        label: '🎙️ GUION DE APERTURA',
         title: slideTitle,
         body: generalNotes || subText || 'Presenta el titular antes de revelar el primer punto.',
       };
@@ -398,14 +399,14 @@ const RUNTIME = String.raw`
       beatTitle = strongEl.textContent.trim().replace(/:$/, '');
       beatExplain = rawText.slice(strongEl.textContent.length).replace(/^[:\s·-]+/, '').trim();
     } else if (isCallout) {
-      beatTitle = 'Franja de cierre / Dinámica en el aula';
+      beatTitle = 'Cierre / Dinámica';
     } else {
       beatTitle = 'Punto ' + bIdx;
     }
 
     return {
-      badge: 'Pulso ' + bIdx + ' / ' + totalB + (isCallout ? ' · Cierre de diapositiva' : ' · Punto activo en pantalla'),
-      label: isCallout ? '🎯 GUION DE CIERRE Y DINÁMICA (NO LEAS LA FRANJA, AMPLÍALA ASÍ)' : ('🎙️ GUION PARA AMPLIAR EL PULSO ' + bIdx + ' DE ' + totalB + ' (NO ESTÁ EN LA DIAPO)'),
+      badge: 'Pulso ' + bIdx + '/' + totalB,
+      label: isCallout ? '🎯 CIERRE Y PREGUNTA AL AULA' : ('🎙️ PULSO ' + bIdx + ' DE ' + totalB),
       title: beatTitle,
       body: customNote || ('Amplía este punto con un ejemplo propio más allá de lo que dice la tarjeta: «' + beatExplain + '»'),
     };
@@ -418,48 +419,56 @@ const RUNTIME = String.raw`
     notes.innerHTML = '<b>[' + cur.badge + '] ' + cur.title + ':</b> ' + cur.body.replace(/\n/g, ' ');
 
     if (!isPresenter) return;
-    document.getElementById('pr-pos-badge').textContent = 'Diapositiva ' + (i + 1) + ' / ' + slides.length + ' · ' + (slides[i].dataset.kicker || '');
+    document.getElementById('pr-pos-badge').textContent = 'Diapositiva ' + (i + 1) + ' / ' + slides.length;
     document.getElementById('pr-step-badge').textContent = cur.badge;
     document.getElementById('pr-now-label').textContent = cur.label;
     document.getElementById('pr-now-title').textContent = cur.title;
     document.getElementById('pr-now-body').textContent = cur.body;
 
-    // Qué viene en el siguiente clic
+    // Puntos discretos de pulso (clicables por si quieres saltar a un pulso concreto sin ocupar espacio)
+    const dotsEl = document.getElementById('pr-dots');
+    if (dotsEl) {
+      dotsEl.innerHTML = '';
+      const totalSteps = beats.length;
+      if (totalSteps > 0) {
+        for (let step = 0; step <= totalSteps; step++) {
+          const dot = document.createElement('button');
+          dot.className = 'pr-dot' + (step === b ? ' active' : (step < b ? ' done' : ''));
+          dot.textContent = step === 0 ? 'Intro' : step;
+          dot.title = getStepInfo(i, step).title;
+          dot.onclick = () => show(i, step);
+          dotsEl.appendChild(dot);
+        }
+      }
+    }
+
+    // Qué viene en el siguiente clic (1 sola línea discreta al pie del guion)
     const nextBox = document.getElementById('pr-next-body');
     if (beatMode && b < beats.length) {
       const nxt = getStepInfo(i, b + 1);
-      nextBox.innerHTML = '<b>Pulso ' + (b + 1) + '/' + beats.length + ' (' + nxt.title + '):</b> ' + nxt.body;
+      nextBox.innerHTML = '<span>Siguiente clic (Pulso ' + (b + 1) + '/' + beats.length + '):</span> <b>' + nxt.title + '</b>';
     } else if (i < slides.length - 1) {
       const nxtS = slides[i + 1];
-      nextBox.innerHTML = '⏭️ <b>Salto a Diapositiva ' + (i + 2) + ' (' + (nxtS.dataset.title || '') + '):</b> ' + (nxtS.dataset.notes || '');
+      nextBox.innerHTML = '<span>Siguiente clic:</span> <b>Pasa a Diapositiva ' + (i + 2) + ' — ' + (nxtS.dataset.title || '') + '</b>';
     } else {
-      nextBox.textContent = '🏁 Fin de la presentación.';
+      nextBox.innerHTML = '<span>🏁 Último pulso de la presentación</span>';
     }
 
-    // Lista interactiva de pulsos de esta diapositiva
-    const tl = document.getElementById('pr-beats-timeline');
-    tl.innerHTML = '';
-    const totalSteps = beats.length;
-    for (let step = 0; step <= totalSteps; step++) {
-      const inf = getStepInfo(i, step);
-      const row = document.createElement('div');
-      row.className = 'pr-tl-item' + (step === b ? ' active' : (step < b ? ' done' : ''));
-      row.innerHTML = '<span class="pr-tl-num">' + (step === 0 ? '0' : step) + '</span>'
-        + '<div class="pr-tl-txt"><b>' + (step === 0 ? 'Apertura titular' : inf.title) + '</b><span>'
-        + inf.body + '</span></div>';
-      row.onclick = () => show(i, step);
-      tl.appendChild(row);
-    }
+    // Subtítulos y miniatura visual de la siguiente diapositiva
+    const currSub = document.getElementById('pr-curr-sub');
+    if (currSub) currSub.textContent = (i + 1) + '/' + slides.length + ' · ' + (slides[i].dataset.kicker || '');
 
-    // Tarjeta de siguiente diapositiva en la barra lateral
-    const upNext = document.getElementById('pr-upnext-box');
+    const nextSub = document.getElementById('pr-next-sub');
+    const nextStage = document.getElementById('pr-next-stage');
     if (i < slides.length - 1) {
       const ns = slides[i + 1];
-      upNext.innerHTML = '<div class="pr-up-kicker">Diapo ' + (i + 2) + ' · ' + (ns.dataset.kicker || '') + '</div>'
-        + '<div class="pr-up-title">' + (ns.dataset.title || '') + '</div>'
-        + '<div class="pr-up-notes">' + (ns.dataset.notes || '') + '</div>';
+      if (nextSub) nextSub.textContent = 'Diapo ' + (i + 2) + ' · ' + (ns.dataset.title || '');
+      if (nextStage) nextStage.classList.remove('is-end');
+      nextSlides.forEach((el, k) => el.classList.toggle('active', k === i + 1));
     } else {
-      upNext.innerHTML = '<div class="pr-up-title">Última diapositiva</div>';
+      if (nextSub) nextSub.textContent = 'Fin de la presentación';
+      if (nextStage) nextStage.classList.add('is-end');
+      nextSlides.forEach((el) => el.classList.remove('active'));
     }
   };
 
@@ -476,7 +485,7 @@ const RUNTIME = String.raw`
       const s = String(sec % 60).padStart(2, '0');
       timerEl.textContent = m + ':' + s;
     }, 1000);
-    btnToggle.onclick = () => { running = !running; btnToggle.textContent = running ? '⏸ Pausar' : '▶ Reanudar'; };
+    btnToggle.onclick = () => { running = !running; btnToggle.textContent = running ? '⏸' : '▶'; };
     btnReset.onclick = () => { sec = 0; timerEl.textContent = '00:00'; };
     document.getElementById('pr-prev').onclick = () => prev();
     document.getElementById('pr-next').onclick = () => next();
@@ -517,10 +526,17 @@ const RUNTIME = String.raw`
   const fit = () => {
     if (isPresenter) {
       const mini = document.getElementById('pr-mini-stage');
-      if (!mini) return;
-      const r = mini.getBoundingClientRect();
-      const s = Math.min(r.width / 1920, r.height / 1080);
-      deck.style.transform = 'scale(' + s + ')';
+      if (mini) {
+        const r = mini.getBoundingClientRect();
+        const s = Math.min(r.width / 1920, r.height / 1080);
+        deck.style.transform = 'scale(' + s + ')';
+      }
+      const nextStage = document.getElementById('pr-next-stage');
+      if (nextStage && nextDeck) {
+        const r2 = nextStage.getBoundingClientRect();
+        const s2 = Math.min(r2.width / 1920, r2.height / 1080);
+        nextDeck.style.transform = 'scale(' + s2 + ')';
+      }
       return;
     }
     const s = Math.min(innerWidth / 1920, innerHeight / 1080);
@@ -658,6 +674,25 @@ const RUNTIME = String.raw`
         secondaryColor: v('--bg-2'), tertiaryColor: v('--bg-2'), mainBkg: v('--mermaid-node'), textColor: v('--mermaid-text'),
         nodeBorder: v('--accent'), clusterBkg: v('--card'), edgeLabelBackground: v('--bg') } });
     try { await mermaid.run({ querySelector: '.mermaid' }); } catch (e) { console.error(e); }
+  }
+  if (isPresenter && deck) {
+    const nextStage = document.getElementById('pr-next-stage');
+    if (nextStage && !nextDeck) {
+      const nextStageInner = document.createElement('div');
+      nextStageInner.className = 'stage';
+      nextDeck = deck.cloneNode(true);
+      nextDeck.querySelectorAll('.beat, .anim').forEach((el) => {
+        el.classList.add('vis');
+        el.classList.remove('current', 'done');
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+      });
+      nextStageInner.appendChild(nextDeck);
+      nextStage.appendChild(nextStageInner);
+      nextSlides = [...nextDeck.querySelectorAll('.slide')];
+      fit();
+      updatePresenterUI();
+    }
   }
   await document.fonts.ready;
   await Promise.all([...document.querySelectorAll('.img')].map((el) => new Promise((ok) => {
