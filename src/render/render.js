@@ -133,29 +133,34 @@ const R = {
 
   video: (s) => {
     const url = s.video_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(s.video_query || s.title)}`;
+    const ytMatch = String(url).match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+    const ytId = ytMatch ? ytMatch[1] : '';
     const thumbStyle = s.image ? `style="background-image:url('${esc(s.image)}')"` : '';
+    // Si hay un callout (pregunta/debate post-vídeo), el vídeo va ANTES del callout para que al terminar el vídeo y dar Espacio vuelva a la diapo con la pregunta
     return `
       <div class="txt">
         ${kicker({ kicker: s.kicker || '▶ Vídeo para ver en clase' })}
         <h2 class="anim">${md(s.title)}</h2>
         ${body(s)}
         ${bullets(s.bullets)}
+        <span class="beat video-beat-marker" data-yt-id="${esc(ytId)}" data-video-url="${esc(url)}" data-video-title="${esc(s.video_title || s.title)}"></span>
         ${callout(s)}
       </div>
-      <a class="yt-card anim a3" href="${esc(url)}" target="_blank" rel="noopener">
+      <div class="yt-card anim a3" data-yt-id="${esc(ytId)}" data-video-url="${esc(url)}">
         <div class="yt-thumb ${s.image ? '' : 'ph'}" ${thumbStyle}>
           <div class="yt-play">▶</div>
           ${s.video_duration ? `<div class="yt-dur">${esc(s.video_duration)}</div>` : ''}
+          <div class="yt-player-slot"></div>
         </div>
         <div class="yt-meta">
-          <div class="yt-badge">YouTube · Clic para reproducir</div>
+          <div class="yt-badge">▶ Pulsa Espacio para reproducir en pantalla · Clic para abrir</div>
           <div class="yt-title">${esc(s.video_title || s.video_query || s.title)}</div>
           <div class="yt-sub">
             <span>${esc(s.video_channel || 'YouTube')}</span>
-            <span class="yt-url">${esc(url.replace(/^https?:\/\/(www\.)?/, ''))}</span>
+            <a class="yt-url" href="${esc(url)}" target="_blank" rel="noopener">${esc(url.replace(/^https?:\/\/(www\.)?/, ''))} ↗</a>
           </div>
         </div>
-      </a>`;
+      </div>`;
   },
 };
 
@@ -216,6 +221,13 @@ ${slides}
 </div>
 <div class="overview" id="overview"></div>
 <div class="blackout" id="blackout"><span>Modo Pizarra / Silencio · Pulsa <b>B</b> o haz clic para volver</span></div>
+<div class="video-modal" id="video-modal">
+  <div class="vm-bar">
+    <span class="vm-title" id="vm-title">▶ Reproduciendo vídeo</span>
+    <button class="vm-close-btn" id="vm-close-btn">✕ Volver a la diapositiva (Espacio / →)</button>
+  </div>
+  <div class="vm-frame-wrap" id="vm-frame-wrap"></div>
+</div>
 <div class="laser" id="laser"></div>
 <div class="notes-panel"></div>
 
@@ -297,7 +309,11 @@ const RUNTIME = String.raw`
   let nextDeck = null, nextSlides = [];
   if (isPresenter) {
     const mini = document.getElementById('pr-mini-stage');
-    if (mini && stage) mini.appendChild(stage);
+    const vm = document.getElementById('video-modal');
+    if (mini && stage) {
+      mini.appendChild(stage);
+      if (vm) mini.appendChild(vm);
+    }
   }
 
   let beatMode = !location.search.includes('beats=0');
@@ -388,7 +404,18 @@ const RUNTIME = String.raw`
     }
 
     const beatEl = beats[bIdx - 1];
-    const customNote = customBeatNotes[bIdx - 1];
+    const videoMarkerIdx = beats.findIndex((el) => el.classList.contains('video-beat-marker'));
+    const noteIdx = (videoMarkerIdx !== -1 && bIdx - 1 > videoMarkerIdx) ? (bIdx - 2) : (bIdx - 1);
+    const customNote = customBeatNotes[noteIdx];
+    if (beatEl.classList.contains('video-beat-marker')) {
+      const vTitle = beatEl.dataset.videoTitle || slideTitle;
+      return {
+        badge: '▶ VÍDEO EN PANTALLA · Pulso ' + bIdx + '/' + totalB,
+        label: '🎬 REPRODUCIENDO VÍDEO EN EL PROYECTOR',
+        title: vTitle,
+        body: 'El vídeo se está reproduciendo a pantalla completa en el proyector.\n\nCuando termine el vídeo, pulsa ESPACIO (o Siguiente) para cerrar el reproductor y volver a la diapositiva.',
+      };
+    }
     const isCallout = beatEl.classList.contains('callout');
     const strongEl = beatEl.querySelector('strong, h3');
     const rawText = beatEl.textContent.trim();
@@ -434,7 +461,8 @@ const RUNTIME = String.raw`
         for (let step = 0; step <= totalSteps; step++) {
           const dot = document.createElement('button');
           dot.className = 'pr-dot' + (step === b ? ' active' : (step < b ? ' done' : ''));
-          dot.textContent = step === 0 ? 'Intro' : step;
+          const isVidStep = step > 0 && beats[step - 1]?.classList.contains('video-beat-marker');
+          dot.textContent = step === 0 ? 'Intro' : (isVidStep ? '▶ Vídeo' : step);
           dot.title = getStepInfo(i, step).title;
           dot.onclick = () => show(i, step);
           dotsEl.appendChild(dot);
@@ -543,11 +571,21 @@ const RUNTIME = String.raw`
     deck.style.transform = 'scale(' + s + ')';
   };
 
+  const videoModal = document.getElementById('video-modal');
+  const vmFrameWrap = document.getElementById('vm-frame-wrap');
+  const vmTitle = document.getElementById('vm-title');
+  let activeVidKey = '';
+
   const applyBeats = () => {
     const beats = getBeats(i);
     if (!beatMode || beats.length === 0) {
       beats.forEach((el) => { el.classList.add('vis'); el.classList.remove('current', 'done'); });
       hudPos.textContent = (i + 1) + ' / ' + slides.length;
+      if (activeVidKey) {
+        activeVidKey = '';
+        document.body.classList.remove('show-video-modal');
+        if (vmFrameWrap) vmFrameWrap.innerHTML = '';
+      }
       return;
     }
     beats.forEach((el, k) => {
@@ -558,7 +596,48 @@ const RUNTIME = String.raw`
       el.classList.toggle('done', visible && !isCurrent);
     });
     hudPos.textContent = (i + 1) + ' / ' + slides.length + (beats.length ? ' · paso ' + b + '/' + beats.length : '');
+
+    // Si el pulso actual es el marcador de vídeo, reproducir el vídeo en la misma pantalla
+    const curBeat = b > 0 ? beats[b - 1] : null;
+    if (curBeat && curBeat.classList.contains('video-beat-marker')) {
+      const ytId = curBeat.dataset.ytId || '';
+      const vTitle = curBeat.dataset.videoTitle || 'Vídeo';
+      const key = i + ':' + b + ':' + ytId;
+      if (activeVidKey !== key) {
+        activeVidKey = key;
+        if (vmTitle) vmTitle.textContent = '▶ ' + vTitle;
+        document.body.classList.add('show-video-modal');
+        if (vmFrameWrap) {
+          if (isPresenter) {
+            vmFrameWrap.innerHTML = '<div class="vm-pres-notice"><div class="vm-pres-icon">▶</div><h3>Reproduciendo vídeo en el proyector</h3><p>' + vTitle + '</p><span>Pulsa <b>Espacio</b> o <b>Siguiente</b> cuando termine para volver a la diapositiva</span></div>';
+          } else if (ytId) {
+            const src = location.protocol === 'file:'
+              ? ('https://raw.githack.com/meloler/uni-slides/main/src/render/yt-player.html?v=' + ytId)
+              : ('https://www.youtube.com/embed/' + ytId + '?autoplay=1&rel=0&modestbranding=1&playsinline=1');
+            vmFrameWrap.innerHTML = '<iframe src="' + src + '" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>';
+            setTimeout(() => { try { window.focus(); } catch {} }, 600);
+          }
+        }
+      }
+    } else if (activeVidKey) {
+      activeVidKey = '';
+      document.body.classList.remove('show-video-modal');
+      if (vmFrameWrap) vmFrameWrap.innerHTML = '';
+    }
   };
+
+  // Permitir también hacer clic directo en la miniatura de vídeo para activar el pulso del vídeo, y botón para salir del vídeo
+  const vmCloseBtn = document.getElementById('vm-close-btn');
+  if (vmCloseBtn) vmCloseBtn.onclick = (e) => { e.stopPropagation(); next(); };
+  document.querySelectorAll('.yt-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      e.stopPropagation();
+      const beats = getBeats(i);
+      const vIdx = beats.findIndex((el) => el.classList.contains('video-beat-marker'));
+      if (vIdx !== -1) show(i, vIdx + 1);
+    });
+  });
 
   const show = (n, beat = null) => {
     const prevSlide = i;
@@ -661,8 +740,13 @@ const RUNTIME = String.raw`
   fit();
   show(init.s, init.b);
   setTimeout(fit, 100);
-  // Para capturas de exportación PDF/PNG (window.__show muestra la diapositiva con todos sus beats revelados)
-  window.__show = (idx) => show(idx, getBeats(Math.max(0, Math.min(slides.length - 1, idx))).length);
+  // Para capturas de exportación PDF/PNG (window.__show muestra la diapositiva con todos sus beats revelados, sin abrir el modal de vídeo)
+  window.__show = (idx) => {
+    const sIdx = Math.max(0, Math.min(slides.length - 1, idx));
+    show(sIdx, getBeats(sIdx).length);
+    document.body.classList.remove('show-video-modal');
+    if (vmFrameWrap) vmFrameWrap.innerHTML = '';
+  };
 
   if (window.mermaid) {
     const css = getComputedStyle(document.documentElement);

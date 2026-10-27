@@ -122,10 +122,11 @@ ul.bullets li::before {
 .l-split .callout { margin-top: 18px; padding: 15px 22px; font-size: 24px; }
 
 /* Tarjeta de vídeo de YouTube */
+.video-beat-marker { display: none !important; }
 .yt-card {
   display: flex; flex-direction: column; text-decoration: none; color: var(--fg);
   background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-lg);
-  overflow: hidden; box-shadow: var(--shadow-lg); height: 780px; width: 760px; flex: 0 0 760px;
+  overflow: hidden; box-shadow: var(--shadow-lg); height: 780px; width: 760px; flex: 0 0 760px; cursor: pointer;
 }
 .yt-thumb { flex: 1; position: relative; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
 .yt-play {
@@ -269,6 +270,40 @@ ul.bullets li::before {
   }
   body.show-blackout .blackout { opacity: 1; pointer-events: auto; }
 
+  /* Reproductor de vídeo integrado a pantalla completa (se activa como un pulso con Espacio) */
+  .video-modal {
+    position: fixed; inset: 0; z-index: 38; background: rgba(4, 6, 12, .96); backdrop-filter: blur(18px);
+    display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity .32s ease;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  body.show-video-modal .video-modal { opacity: 1; pointer-events: auto; }
+  .vm-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 12px 28px; background: #0d101b; border-bottom: 1px solid rgba(255,255,255,.1); color: #e5e7eb;
+  }
+  .vm-title { font-size: 16px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vm-close-btn {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 7px 16px;
+    font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .vm-close-btn:hover { filter: brightness(1.1); }
+  .vm-frame-wrap { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
+  .vm-frame-wrap iframe { width: 100%; height: 100%; border: 0; }
+  .vm-pres-notice {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: 24px; color: #f3f4f6; gap: 8px;
+  }
+  .vm-pres-icon {
+    width: 64px; height: 46px; border-radius: 14px; background: #ff0033; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 6px;
+    box-shadow: 0 10px 30px rgba(255,0,51,.45);
+  }
+  .vm-pres-notice h3 { font-size: 18px; color: #fff; margin: 0; }
+  .vm-pres-notice p { font-size: 14px; color: var(--accent); font-weight: 600; margin: 0; }
+  .vm-pres-notice span { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+  body.is-presenter .pr-mini-stage .video-modal { position: absolute; inset: 0; }
+  body.is-presenter .pr-mini-stage .vm-bar { display: none; }
+
   /* Puntero láser (Tecla L) */
   .laser {
     position: fixed; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 50%;
@@ -381,6 +416,6 @@ ul.bullets li::before {
 @media print {
   .stage, .deck { all: unset; display: block; }
   .slide { break-after: page; page-break-after: always; }
-  .progress, .notes-panel, .hud, .overview, .blackout, .laser, .presenter-ui { display: none !important; }
+  .progress, .notes-panel, .hud, .overview, .blackout, .video-modal, .laser, .presenter-ui { display: none !important; }
   .anim, .beat { opacity: 1 !important; transform: none !important; filter: none !important; }
 }
