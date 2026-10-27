@@ -1,8 +1,17 @@
 // Exportador a PPTX editable (compatible 100% con Google Slides y PowerPoint).
 // Mantiene los 3 temas (aurora, neon, paper), los 13 layouts, imágenes y notas del profesor.
-import PptxGenJS from './vendor/pptxgen.js';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+
+async function loadPptxGen() {
+  try {
+    const mod = await import('./vendor/pptxgen.js');
+    return mod.default || mod;
+  } catch {
+    const mod = await import('pptxgenjs');
+    return mod.default || mod;
+  }
+}
 
 const THEMES = {
   aurora: {
@@ -120,6 +129,7 @@ function resolveImg(outDir, rel) {
 }
 
 export async function exportPPTX(deck, outDir, pptxFile) {
+  const PptxGenJS = await loadPptxGen();
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE'; // 13.333 x 7.5 pulgadas (16:9)
   pptx.title = deck.title;

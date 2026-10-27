@@ -98,11 +98,15 @@ async function finish(deck, outDir, args, log) {
     }
   }
   if (args.pptx) {
-    const { exportPPTX } = await import('./pptx.js');
-    const pptx = path.join(outDir, `${slug(deck.title)}.pptx`);
-    await exportPPTX(deck, outDir, pptx);
-    log(`✔ PPTX (Google Slides): ${pptx}`);
-    result.pptx = pptx;
+    try {
+      const { exportPPTX } = await import('./pptx.js');
+      const pptx = path.join(outDir, `${slug(deck.title)}.pptx`);
+      await exportPPTX(deck, outDir, pptx);
+      log(`✔ PPTX (Google Slides): ${pptx}`);
+      result.pptx = pptx;
+    } catch (e) {
+      log(`⚠ PPTX no disponible en modo cero-dependencias (${e.message}). El HTML interactivo está completo.`);
+    }
   }
   const issues = lintDeck(deck);
   if (issues.length) log(`\nRevisión:\n${formatIssues(issues)}`);
