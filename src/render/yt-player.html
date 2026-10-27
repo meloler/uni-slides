@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<style>html,body,iframe{margin:0;padding:0;width:100%;height:100%;background:#000;border:0;overflow:hidden}</style>
+</head>
+<body>
+<script>
+const p = new URLSearchParams(location.search);
+const id = p.get('v') || '';
+if (/^[A-Za-z0-9_-]{11}$/.test(id)) {
+  const f = document.createElement('iframe');
+  f.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1';
+  f.allow = 'autoplay; encrypted-media; fullscreen; picture-in-picture';
+  f.allowFullscreen = true;
+  document.body.appendChild(f);
+}
+</script>
+</body>
+</html>
