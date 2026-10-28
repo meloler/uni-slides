@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { normalizeDeck } from './schema.js';
 import { lintDeck, formatIssues } from './lint.js';
 import { renderDeck, renderStandaloneHTML, listThemes } from './render/render.js';
+import { resilientFetch } from './net.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -254,6 +255,9 @@ async function main() {
       console.log(`  • Carpeta raíz: ${root}`);
       console.log(`  • Archivo .env cargado: ${loadedEnvFile ? `✔ ${loadedEnvFile}` : '✖ No se encontró archivo .env'}`);
 
+      const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy || process.env.ALL_PROXY || process.env.all_proxy;
+      console.log(`  • Proxy de red detectado: ${proxy ? `✔ ${proxy}` : 'Ninguno (conexión directa)'}`);
+
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
         console.log('  • OPENAI_API_KEY: ✖ NO DETECTADA');
@@ -275,7 +279,7 @@ async function main() {
       console.log('\n→ Comprobando conexión con OpenAI API...');
       try {
         const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-        const resp = await fetch(`${baseUrl}/models`, {
+        const resp = await resilientFetch(`${baseUrl}/models`, {
           headers: { Authorization: `Bearer ${apiKey}` },
         });
         if (!resp.ok) {
@@ -283,10 +287,11 @@ async function main() {
           console.log(`  ✖ Error de autenticación OpenAI (HTTP ${resp.status}): ${errTxt.slice(0, 200)}`);
           process.exit(1);
         }
-        console.log('  ✔ Autenticación con OpenAI: Correcta (HTTP 200)');
+        const viaMsg = resp.fromCurl ? ' (conectado exitosamente a través del proxy con curl)' : ' (vía fetch nativo)';
+        console.log(`  ✔ Autenticación con OpenAI: Correcta (HTTP 200)${viaMsg}`);
 
         console.log('→ Generando 1 imagen de prueba con OpenAI...');
-        const imgResp = await fetch(`${baseUrl}/images/generations`, {
+        const imgResp = await resilientFetch(`${baseUrl}/images/generations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -310,6 +315,9 @@ async function main() {
         console.log('\n✅ Todo está correctamente configurado para generar ilustraciones de alta calidad con OpenAI.');
       } catch (err) {
         console.log(`  ✖ Error de red al conectar con OpenAI: ${err.message}`);
+        if (err.cause) console.log(`  • Detalle técnico: ${err.cause.code || err.cause.message || err.cause}`);
+        if (err.curlError) console.log(`  • Detalle curl: ${err.curlError.message}`);
+        console.log('\n👉 Si tu servidor tiene un proxy con lista blanca, un administrador debe permitir el dominio "api.openai.com".');
         process.exit(1);
       }
       return;

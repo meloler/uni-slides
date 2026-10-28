@@ -3,10 +3,11 @@
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { resilientFetch } from './net.js';
 
 export async function searchYouTube(query) {
   const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-  const res = await fetch(url, {
+  const res = await resilientFetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
       'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
@@ -59,7 +60,7 @@ export async function resolveVideos(deck, outDir, { log = console.log } = {}) {
         let channel = s.video_channel;
         if (!title) {
           try {
-            const oe = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${existingId}&format=json`);
+            const oe = await resilientFetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${existingId}&format=json`);
             if (oe.ok) {
               const j = await oe.json();
               title = j.title;
@@ -87,7 +88,7 @@ export async function resolveVideos(deck, outDir, { log = console.log } = {}) {
       const relThumb = `images/yt-${info.id}.jpg`;
       const absThumb = path.join(outDir, relThumb);
       if (!existsSync(absThumb)) {
-        const r = await fetch(info.thumb);
+        const r = await resilientFetch(info.thumb);
         if (r.ok) await writeFile(absThumb, Buffer.from(await r.arrayBuffer()));
       }
       if (existsSync(absThumb)) s.image = relThumb;

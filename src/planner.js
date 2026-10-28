@@ -1,6 +1,7 @@
 // Planificador pedagógico: convierte el temario (texto) en deck.json con OpenAI (Structured Outputs) usando fetch nativo (0 dependencias npm).
 import { DECK_SCHEMA, LAYOUTS, SLIDE_SCHEMA, normalizeDeck } from './schema.js';
 import { lintDeck, formatIssues } from './lint.js';
+import { resilientFetch } from './net.js';
 
 const TEXT_MODEL = () => process.env.SLIDES_TEXT_MODEL || 'gpt-5';
 
@@ -35,7 +36,7 @@ Conviertes un temario en una presentación de clase memorable, visual y bien est
 El profesor proyecta las diapositivas en la pantalla del aula mientras lee la Consola del Profesor en su portátil (Tecla P).
 Durante la clase NO tiene tiempo de traducir textos complejos ni de leer instrucciones pedagógicas sobre lo que "va a hacer".
 
-1. **PROHIBIDO EL META-LENGUAJE PEDAGÓGICO:**
+1. **PROHIBIDO EL META-LENGYAJE PEDAGÓGICO:**
    - ❌ NUNCA escribas: "Voy a provocar una respuesta rápida...", "Quiero que piensen...", "Reservaré los últimos minutos...", "Comenzaré explicando...".
    - ✔️ Escribe DIRECTAMENTE las palabras habladas que el profesor dice a los alumnos:
      «Chicos, mirad estos dos barrios: Barrio A tiene 20 actividades y Barrio B tiene 10. A primera vista parece que B está abandonado. Pero alto: ¿y si Barrio B tiene solo 500 habitantes? El dato en bruto sin contexto engaña.»
@@ -68,7 +69,7 @@ async function callJSON(messages, schema, name) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('Falta OPENAI_API_KEY (ponla en .env o en el entorno).');
   const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const resp = await fetch(`${baseUrl}/chat/completions`, {
+  const resp = await resilientFetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
