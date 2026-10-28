@@ -135,6 +135,13 @@ El mayor fallo al generar notas es redactar resúmenes teóricos o planes docent
 
 ## 6. Flujo paso a paso
 
+0. **Comprueba el entorno y la API de OpenAI (solo la primera vez o si dudas):**
+   ```bash
+   node $UNI_SLIDES_HOME/src/cli.js check
+   ```
+   Verifica que detecte el archivo `.env` y que la generación de imágenes con OpenAI esté al 100%.
+   *(⚠️ **PROHIBIDO** generar gráficos caseros con SVG, Python o FFmpeg con textos superpuestos. Las ilustraciones deben ser generadas exclusivamente por el motor oficial de `cli.js compile` usando OpenAI).*
+
 1. **Escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`** directamente con tu propio razonamiento.
 2. **Valida con `lint` (gratis, instantáneo):**
    ```bash
