@@ -104,6 +104,18 @@ El mayor fallo al generar notas es redactar resúmenes teóricos o planes docent
   - ✔️ Editorial / impactante: *"Abstract layered human profile made of evolving organic ribbons and geometric shapes representing personal growth and digital identity, warm sunset colors on dark background"*
 - Si no hay `OPENAI_API_KEY` en el entorno o la API falla, el sistema usará placeholders. Asegúrate de que OpenClaw tenga configurada la clave en `.env`.
 
+### 🤖 Generación de imágenes con la herramienta nativa de OpenClaw (¡Recomendado si el proxy bloquea OpenAI!):
+Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa hacia `api.openai.com` (error HTTP 403 en `cli.js check`), **tú mismo (OpenClaw) puedes generar las imágenes directamente con tu herramienta nativa de generación de imágenes / OAuth de Codex**:
+1. Escribe `deck.json` con los `image_prompt` en inglés para cada diapositiva visual.
+2. Genera cada imagen usando tu propia herramienta nativa de imágenes (vía tu suscripción/OAuth).
+3. Guarda los archivos generados en `$UNI_SLIDES_HOME/out/<slug>/images/s01.png`, `s02.png`, etc.
+4. Asigna la ruta correspondiente en el campo `"image"` de cada diapositiva en `deck.json` (ej. `"image": "images/s01.png"`).
+5. Compila usando el flag `--no-images`:
+   ```bash
+   node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --no-images --pdf --pptx
+   ```
+   El compilador tomará tus imágenes generadas, las incrustará automáticamente en base64 dentro del archivo `.html` autocontenido final y exportará el PDF y PPTX sin intentar llamar a la API externa bloqueada.
+
 ---
 
 ## 4. Estructura de la sesión paso a paso
