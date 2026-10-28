@@ -31,6 +31,27 @@ Conviertes un temario en una presentación de clase memorable, visual y bien est
 - Incluye al menos 4 diapositivas "example" con casos reales y cada vez que pongas un "quiz" añade justo después una diapositiva con las respuestas explicadas.
 - Varía los layouts: no repitas el mismo más de 2 veces seguidas.
 
+## Reglas OBLIGATORIAS para las notas de orador (GUION HABLADO PARA EL PROFESOR)
+El profesor proyecta las diapositivas en la pantalla del aula mientras lee la Consola del Profesor en su portátil (Tecla P).
+Durante la clase NO tiene tiempo de traducir textos complejos ni de leer instrucciones pedagógicas sobre lo que "va a hacer".
+
+1. **PROHIBIDO EL META-LENGUAJE PEDAGÓGICO:**
+   - ❌ NUNCA escribas: "Voy a provocar una respuesta rápida...", "Quiero que piensen...", "Reservaré los últimos minutos...", "Comenzaré explicando...".
+   - ✔️ Escribe DIRECTAMENTE las palabras habladas que el profesor dice a los alumnos:
+     «Chicos, mirad estos dos barrios: Barrio A tiene 20 actividades y Barrio B tiene 10. A primera vista parece que B está abandonado. Pero alto: ¿y si Barrio B tiene solo 500 habitantes? El dato en bruto sin contexto engaña.»
+
+2. **LENGUAJE SENCILLO, NATURAL Y COLOQUIAL (Como a un amigo inteligente de 20 años):**
+   - Evita jerga administrativa o legal farragosa ("figura normativa", "inferencia de grupo pequeño", "autorización general").
+   - Usa metáforas cotidianas (el menú del bar, el aparcamiento lleno, la lista de Spotify, el Excel con contraseñas, el carné de la biblioteca).
+   - Frases cortas y directas. Si hay un concepto técnico (como Seudonimización vs Anonimización, o Hash), explícalo con una analogía visual inmediata.
+
+3. **CAMPOS OBLIGATORIOS POR DIAPOSITIVA:**
+   - notes: Guion hablado de APERTURA (Pulso 0). Es lo que dice el profesor nada más pasar a la diapositiva, antes de pulsar Espacio para revelar los puntos. Plantea la pregunta, la anécdota o el titular.
+   - beat_notes: Array de strings con el guion hablado EXACTO para cada pulso que aparece al pulsar Espacio:
+     - 1 string por cada bullet / columna / paso.
+     - 1 string adicional al final para el callout (analogía o pregunta al aula).
+     Cada frase debe ser lo que el profesor dice en voz alta para explicar ese punto concreto sin repetir literalmente el texto de la pantalla.
+
 ## Layouts disponibles
 ${layoutDocs}
 
@@ -98,37 +119,19 @@ ${syllabus}
   // Bucle de autocorrección con el revisor de reglas
   for (let pass = 1; pass <= (opts.maxFixes ?? 2); pass++) {
     const errors = lintDeck(deck).filter((x) => x.level === 'error');
-    if (!errors.length) break;
-    log(`→ Corrigiendo ${errors.length} problemas (pasada ${pass})...\n${formatIssues(errors)}`);
-    messages.push({ role: 'assistant', content: JSON.stringify(raw) });
-    messages.push({
-      role: 'user',
-      content: `El revisor ha encontrado estos problemas. Devuelve el deck COMPLETO corregido, sin cambiar lo que ya está bien:\n${formatIssues(errors)}`,
-    });
-    raw = await callJSON(messages, DECK_SCHEMA, 'deck');
+    if (!errors.length) {
+      log(`✔ Validación limpia (intento ${pass}).`);
+      break;
+    }
+    log(`⚠ ${errors.length} errores detectados; corrigiendo (pase ${pass})...`);
+    const fixPrompt = `El revisor detectó estos errores en el JSON anterior:\n${formatIssues(errors)}\nCorrige el deck devolviendo el JSON completo válido.`;
+    raw = await callJSON(
+      [...messages, { role: 'assistant', content: JSON.stringify(deck) }, { role: 'user', content: fixPrompt }],
+      DECK_SCHEMA,
+      'deck_fixed'
+    );
     deck = normalizeDeck({ ...raw, theme: opts.theme });
   }
-  return deck;
-}
 
-/** Reescribe una sola diapositiva según una instrucción ("hazla más visual", "añade un caso real"...). */
-export async function regenSlide(deck, index, instruction) {
-  const ctx = deck.slides.map((s, i) => `${i + 1}. [${s.layout}] ${s.title}`).join('\n');
-  const raw = await callJSON(
-    [
-      { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `Presentación "${deck.title}". Gran pregunta: "${deck.hook}".
-Índice:\n${ctx}\n
-Diapositiva ${index + 1} actual:\n${JSON.stringify(deck.slides[index], null, 2)}\n
-Reescríbela siguiendo esta instrucción: "${instruction}". Devuelve solo la diapositiva.`,
-      },
-    ],
-    SLIDE_SCHEMA,
-    'slide'
-  );
-  const next = normalizeDeck({ ...deck, slides: [raw] }).slides[0];
-  if (next.image_prompt === deck.slides[index].image_prompt) next.image = deck.slides[index].image;
-  return next;
+  return deck;
 }

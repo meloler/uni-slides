@@ -57,6 +57,29 @@ export function lintDeck(deck) {
     if (s.layout === 'big-number' && !s.big_number) add(i, 'error', 'big-number sin cifra.');
     if (s.layout === 'quiz' && !(s.questions?.length >= 2)) add(i, 'error', 'Quiz necesita ≥2 preguntas.');
 
+    // Validación de notas de orador (guion hablado para el profesor)
+    if (!s.notes || !s.notes.trim()) {
+      add(i, 'error', 'Falta la nota de orador ("notes"). Debe incluir el guion hablado para el profesor.');
+    } else {
+      const metaMatch = s.notes.match(/^(voy a|quiero que|reservar[eé]|no aceptar[eé]|yo organizar[ií]a|vamos a ver c[oó]mo|comenzar[eé]|empezar[eé]|pretendo|proceder[eé])/i);
+      if (metaMatch) {
+        add(i, 'warn', `La nota de orador parece una instrucción para ti ("${metaMatch[0]}..."). Escribe directamente el guion hablado que dirás a los alumnos en clase («...»).`);
+      }
+    }
+
+    // Comprobación de beats y beat_notes
+    let expectedBeats = 0;
+    if (s.bullets?.length) expectedBeats += s.bullets.length;
+    if (s.steps?.length) expectedBeats += s.steps.length;
+    if (s.columns?.length) expectedBeats += s.columns.length;
+    if (s.questions?.length) expectedBeats += s.questions.length;
+    if (s.callout) expectedBeats += 1;
+    if (s.layout === 'video') expectedBeats += 1;
+
+    if (expectedBeats >= 2 && (!s.beat_notes || s.beat_notes.length === 0)) {
+      add(i, 'warn', `Esta diapositiva tiene ${expectedBeats} pulsos pero "beat_notes" está vacío. Añade un array de strings con el guion hablado para cada pulso al pulsar Espacio.`);
+    }
+
     if (i > 0 && s.layout === slides[i - 1].layout && s.layout !== 'section') {
       streak++;
       if (streak > 2) add(i, 'warn', `Layout "${s.layout}" repetido ${streak} veces seguidas; varía el ritmo visual.`);

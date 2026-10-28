@@ -64,10 +64,11 @@ export const SLIDE_SCHEMA = {
     image_prompt: nstr,
     image_side: { type: ['string', 'null'], enum: ['left', 'right', null] },
     notes: str,
+    beat_notes: strArr,
   },
   required: [
     'layout', 'kicker', 'title', 'subtitle', 'bullets', 'body', 'callout', 'big_number', 'big_number_label',
-    'columns', 'steps', 'quote', 'quote_author', 'mermaid', 'questions', 'video_query', 'image_prompt', 'image_side', 'notes',
+    'columns', 'steps', 'quote', 'quote_author', 'mermaid', 'questions', 'video_query', 'image_prompt', 'image_side', 'notes', 'beat_notes',
   ],
 };
 
