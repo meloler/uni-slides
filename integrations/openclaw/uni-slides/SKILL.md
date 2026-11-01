@@ -102,12 +102,32 @@ El mayor fallo al generar notas es redactar resúmenes teóricos o planes docent
   - Para infografía / diseño tecnológico:
     `"image_style": "isometric 3D tech visualization, sleek glassmorphism elements, neon accents, dark sleek background"`
 
-### 📸 Calidad y prompts de imágenes (`image_prompt`):
-- Los `image_prompt` se escriben siempre en **inglés**.
-- **No describas clips de oficina ni iconos genéricos con candados o checkmarks aburridos.** Describe conceptos artísticos, metáforas visuales, personas en acción realista o composiciones editoriales:
-  - ❌ Cutre / genérico: *"A cartoon folder with a green tick icon and a lock"*
-  - ✔️ Editorial / impactante: *"Abstract layered human profile made of evolving organic ribbons and geometric shapes representing personal growth and digital identity, warm sunset colors on dark background"*
-- Si no hay `OPENAI_API_KEY` en el entorno o la API falla, el sistema usará placeholders. Asegúrate de que OpenClaw tenga configurada la clave en `.env`.
+### 📊 Esquemas, Infografías y Diagramas Visuales
+Para conceptos técnicos, flujos de procesos o relaciones entre datos, puedes utilizar **dos formatos visuales según convenga**:
+
+1. **Infografías o esquemas 3D generados como Imagen (`layout: "concept"` o `"example"` con `image`):**
+   - Es la opción visualmente más espectacular y con acabado de revista de diseño / editorial.
+   - Pides a tu generador de imágenes una infografía conceptual o diagrama 3D en isométrico o vista cenital/frontal.
+   - Ejemplos de prompts infográficos:
+     - `"isometric 3D infographic diagram showing data flow from government database through privacy filters to public citizen apps, sleek glassmorphism panels, soft neon accents"`
+     - `"abstract conceptual diagram of data hierarchy, tiered floating glass pedestals, minimal futuristic visualization, warm sunset studio lighting"`
+   - Se guarda como imagen en `images/sXX.png` y se asigna al campo `"image"`.
+
+2. **Diagramas interactivos de código nativo (`layout: "diagram"` con `mermaid`):**
+   - El sistema tiene soporte nativo para **Mermaid** (diagramas vectoriales interactivos).
+   - Ideal para flujos de decisión, mapas conceptuales o árboles lógicos donde los nodos y flechas deban verse en texto nítido y adaptarse al tema (`flowchart LR`, `flowchart TD`, `mindmap`).
+   - Ejemplo:
+     ```json
+     {
+       "layout": "diagram",
+       "kicker": "Flujo de decisión",
+       "title": "Protocolo para evaluar la apertura de un conjunto de datos",
+       "mermaid": "graph LR\n  A[\"¿Tiene datos personales?\"] -->|Sí| B[\"Aplicar anonimización\"]\n  A -->|No| C[\"Revisar licencias\"]\n  B --> D[\"¿Riesgo residual?\"]\n  D -->|Alto| E[\"Acceso restringido\"]\n  D -->|Bajo| F[\"Publicar en Open Data\"]",
+       "notes": "...",
+       "beat_notes": []
+     }
+     ```
+El agente debe **combinar ambos recursos**: usar imágenes/infografías generadas para metáforas visuales potentes y esquemas Mermaid para flujos analíticos o árboles de decisión.
 
 ### 🤖 Generación de imágenes con la herramienta nativa de OpenClaw (¡Recomendado si el proxy bloquea OpenAI!):
 Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa hacia `api.openai.com` (error HTTP 403 en `cli.js check`), **tú mismo (OpenClaw) puedes generar las imágenes directamente con tu herramienta nativa de generación de imágenes / OAuth de Codex**:
