@@ -91,30 +91,21 @@ function parseArgs(argv) {
   return args;
 }
 
-function slug(s) {
-  return String(s || 'presentacion')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60);
-}
+const slug = (s) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'deck';
 
 async function readInput(file) {
-  if (!file || file === '-') {
+  if (file === '-' || !file) {
     const chunks = [];
-    for await (const chunk of process.stdin) chunks.push(chunk);
+    for await (const c of process.stdin) chunks.push(c);
     return Buffer.concat(chunks).toString('utf8');
   }
   return readFile(file, 'utf8');
 }
 
 async function loadDeck(file) {
-  const raw = JSON.parse(await readInput(file));
-  return normalizeDeck(raw);
+  return normalizeDeck(JSON.parse(await readFile(file, 'utf8')));
 }
-
 async function saveDeck(deck, outDir) {
   await mkdir(outDir, { recursive: true });
   const f = path.join(outDir, 'deck.json');
@@ -123,6 +114,10 @@ async function saveDeck(deck, outDir) {
 }
 
 async function finish(deck, outDir, args, log) {
+  const { linkExistingImages } = await import('./images.js');
+  if (await linkExistingImages(deck, outDir)) {
+    await saveDeck(deck, outDir);
+  }
   if (deck.slides.some((s) => s.layout === 'video')) {
     const { resolveVideos } = await import('./youtube.js');
     await resolveVideos(deck, outDir, { log });
@@ -134,18 +129,21 @@ async function finish(deck, outDir, args, log) {
   await renderStandaloneHTML(html, standalone);
   log(`✔ HTML Portátil (1 solo archivo con imágenes incrustadas): ${standalone}`);
   const result = { outDir, deck: path.join(outDir, 'deck.json'), html, standalone, slides: deck.slides.length };
+  const exportErrors = [];
   if (args.pdf || args.png) {
     try {
       const { exportPDF } = await import('./pdf.js');
       let shots = null;
       if (args.png) await mkdir((shots = path.join(outDir, 'png')), { recursive: true });
       const pdf = path.join(outDir, `${slug(deck.title)}.pdf`);
-      await exportPDF(standalone, pdf, { screenshotsDir: shots });
+      await exportPDF(standalone, pdf, { screenshotsDir: shots, deck, outDir });
+      if (!existsSync(pdf)) throw new Error('No se escribió el archivo PDF en disco');
       log(`✔ PDF: ${pdf}`);
       result.pdf = pdf;
       if (shots) result.png = shots;
     } catch (e) {
-      log(`⚠ PDF directo no disponible en este contenedor (${e.message}). Puedes abrir ${path.basename(standalone)} en el navegador y pulsar Ctrl+P -> Guardar como PDF.`);
+      log(`✖ Error exportando PDF: ${e.message}`);
+      exportErrors.push(`PDF: ${e.message}`);
     }
   }
   if (args.pptx) {
@@ -153,15 +151,21 @@ async function finish(deck, outDir, args, log) {
       const { exportPPTX } = await import('./pptx.js');
       const pptx = path.join(outDir, `${slug(deck.title)}.pptx`);
       await exportPPTX(deck, outDir, pptx);
+      if (!existsSync(pptx)) throw new Error('No se escribió el archivo PPTX en disco');
       log(`✔ PPTX (Google Slides): ${pptx}`);
       result.pptx = pptx;
     } catch (e) {
-      log(`⚠ PPTX no disponible en modo cero-dependencias (${e.message}). El HTML interactivo está completo.`);
+      log(`✖ Error exportando PPTX: ${e.message}`);
+      exportErrors.push(`PPTX: ${e.message}`);
     }
   }
   const issues = lintDeck(deck);
   if (issues.length) log(`\nRevisión:\n${formatIssues(issues)}`);
   result.issues = issues;
+  if (exportErrors.length > 0) {
+    result.exportErrors = exportErrors;
+    process.exitCode = 1;
+  }
   return result;
 }
 

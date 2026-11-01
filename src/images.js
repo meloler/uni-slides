@@ -1,9 +1,48 @@
 // Motor de imágenes: genera una imagen por diapositiva con la API de OpenAI usando fetch nativo (0 dependencias npm).
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { resilientFetch } from './net.js';
+
+/**
+ * Busca en outDir/images archivos ya generados (p. ej. s01.png, s01-xxxx.png, slide-1.png)
+ * y los enlaza automáticamente en s.image si aún no estaban asignados.
+ */
+export async function linkExistingImages(deck, outDir) {
+  const imgDir = path.join(outDir, 'images');
+  if (!existsSync(imgDir)) return false;
+  let files = [];
+  try {
+    files = await readdir(imgDir);
+  } catch {
+    return false;
+  }
+  let changed = false;
+  deck.slides.forEach((s, idx) => {
+    if (s.image && existsSync(path.join(outDir, s.image))) return;
+    const n2 = String(idx + 1).padStart(2, '0');
+    const n1 = String(idx + 1);
+    const match = files.find((f) => {
+      if (!/\.(png|jpe?g|webp)$/i.test(f)) return false;
+      const base = f.replace(/\.(png|jpe?g|webp)$/i, '');
+      return (
+        base === `s${n2}` ||
+        base === `s${n1}` ||
+        base.startsWith(`s${n2}-`) ||
+        base.startsWith(`s${n2}_`) ||
+        base === `slide-${n2}` ||
+        base === `slide-${n1}` ||
+        base === `diapo-${n2}`
+      );
+    });
+    if (match) {
+      s.image = `images/${match}`;
+      changed = true;
+    }
+  });
+  return changed;
+}
 
 const IMAGE_MODEL = () => process.env.SLIDES_IMAGE_MODEL || 'gpt-image-2.5-flare';
 const IMAGE_QUALITY = () => process.env.SLIDES_IMAGE_QUALITY || 'medium';

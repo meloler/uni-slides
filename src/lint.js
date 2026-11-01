@@ -3,7 +3,7 @@
 
 const words = (t) => (t || '').replace(/\*\*/g, '').trim().split(/\s+/).filter(Boolean).length;
 
-const VISUAL_REQUIRED = ['concept', 'example', 'question'];
+const VISUAL_REQUIRED = ['question'];
 const ASSERTION_TITLES = ['concept', 'example', 'diagram', 'big-number', 'comparison', 'process', 'video'];
 
 export function countSpokenBeats(s) {
