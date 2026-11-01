@@ -64,8 +64,8 @@ const R = {
     </div>
     ${s.image_prompt || s.image ? imgDiv(s, 'side') : ''}`,
 
-  concept: (s) => split(s),
-  example: (s) => split({ ...s, kicker: s.kicker || 'Caso real' }),
+  concept: (s, d, i) => split(s, d, i),
+  example: (s, d, i) => split({ ...s, kicker: s.kicker || 'Caso real' }, d, i),
 
   'big-number': (s) => `
     ${s.image || s.image_prompt ? bgImage(s) : ''}
@@ -163,10 +163,55 @@ const R = {
   },
 };
 
-function split(s) {
-  const visual = s.mermaid
-    ? `<div class="visual diagram-box anim a3">${mermaid(s.mermaid)}</div>`
-    : `<div class="visual anim a3">${imgDiv(s, '')}</div>`;
+function editorialGraphic(s, idx = 0) {
+  // Extrae los conceptos clave en negrita de cada bullet para componer una lámina infográfica 3D editorial
+  const items = (s.bullets || []).slice(0, 4).map((b, k) => {
+    const m = /\*\*(.+?)\*\*/.exec(b);
+    const label = m ? m[1].replace(/:$/, '') : b.replace(/\*\*/g, '').split(/[:.]/)[0].slice(0, 48);
+    return `<div class="ed-node"><div class="ed-node-idx">0${k + 1}</div><div class="ed-node-txt">${esc(label)}</div></div>`;
+  });
+  const rot = (idx * 37) % 360;
+  return `
+    <svg class="ed-svg-bg" viewBox="0 0 760 820" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="edg1-${idx}" cx="28%" cy="24%" r="60%">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.34"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="edg2-${idx}" cx="78%" cy="76%" r="55%">
+          <stop offset="0%" stop-color="var(--accent-2)" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="var(--accent-2)" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="edl-${idx}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.45"/>
+          <stop offset="100%" stop-color="var(--accent-2)" stop-opacity="0.12"/>
+        </linearGradient>
+      </defs>
+      <rect width="760" height="820" fill="url(#edg1-${idx})"/>
+      <rect width="760" height="820" fill="url(#edg2-${idx})"/>
+      <g transform="translate(380,410) rotate(${rot})" opacity="0.55">
+        <circle cx="0" cy="0" r="270" fill="none" stroke="url(#edl-${idx})" stroke-width="1.5" stroke-dasharray="8 10"/>
+        <circle cx="0" cy="0" r="195" fill="none" stroke="url(#edl-${idx})" stroke-width="2"/>
+        <polygon points="0,-220 190,110 -190,110" fill="none" stroke="url(#edl-${idx})" stroke-width="1.5"/>
+        <rect x="-135" y="-135" width="270" height="270" rx="38" fill="none" stroke="url(#edl-${idx})" stroke-width="1.8" transform="rotate(25)"/>
+      </g>
+    </svg>
+    <div class="ed-canvas">
+      <div class="ed-top-badge">${esc(s.kicker || (s.layout === 'example' ? 'Caso aplicado' : 'Esquema conceptual'))}</div>
+      <div class="ed-nodes">${items.join('')}</div>
+      <div class="ed-footer-bar"><span>Síntesis visual</span><span>Diapo ${pad(idx + 1)}</span></div>
+    </div>`;
+}
+
+function split(s, d, idx = 0) {
+  let visual = '';
+  if (s.mermaid) {
+    visual = `<div class="visual diagram-box anim a3">${mermaid(s.mermaid)}</div>`;
+  } else if (s.image) {
+    visual = `<div class="visual anim a3">${imgDiv(s, '')}</div>`;
+  } else {
+    visual = `<div class="visual editorial-art anim a3">${editorialGraphic(s, idx)}</div>`;
+  }
   return `
     <div class="txt">
       ${kicker(s)}
@@ -201,13 +246,15 @@ export function renderHTML(deck, { themeCss, mermaidSrc }) {
     .join('\n');
 
   const usesMermaid = deck.slides.some((s) => s.mermaid);
+  const defaultTr = ['cinematic', 'cube', 'glide', 'iris'].includes(deck.transition) ? deck.transition : 'cinematic';
+  const trLabels = { cinematic: 'Cinematic', cube: 'Cubo 3D', glide: 'Glide', iris: 'Iris' };
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(deck.title.replace(/\*\*/g, ''))}</title>
 <style>${themeCss}</style>
 <style>${BASE_CSS}</style>
-</head><body class="beat-mode">
+</head><body class="beat-mode tr-${defaultTr}" data-tr="${defaultTr}">
 <div class="stage"><div class="deck">
 ${slides}
 </div></div>
@@ -215,8 +262,9 @@ ${slides}
 <div class="hud">
   <span class="hud-pill" id="hud-pos">1 / ${total}</span>
   <span class="hud-pill" id="hud-beats" title="Tecla M: activar/desactivar Modo Beats (paso a paso)">⚡ Beats ON</span>
+  <span class="hud-pill" id="hud-tr" title="Tecla T: cambiar efecto de transición entre diapositivas (Cinematic / Cubo 3D / Glide / Iris)">🎬 Efecto: ${trLabels[defaultTr]} (T)</span>
   <span class="hud-pill hud-pres" id="hud-pres" title="Tecla P: Abrir Ventana de Presentador en tu pantalla (Pantalla 1)">🎙️ Vista Profesor (P)</span>
-  <span class="hud-pill hud-keys"><b>Espacio/→</b> avanzar · <b>P</b> presentador · <b>O</b> mosaico · <b>B</b> negro · <b>L</b> láser · <b>F</b> pantalla completa</span>
+  <span class="hud-pill hud-keys"><b>Espacio/→</b> avanzar · <b>T</b> transición · <b>P</b> presentador · <b>O</b> mosaico · <b>B</b> negro · <b>L</b> láser · <b>F</b> pantalla completa</span>
 </div>
 <div class="overview" id="overview"></div>
 <div class="blackout" id="blackout"><span>Modo Pizarra / Silencio · Pulsa <b>B</b> o haz clic para volver</span></div>
@@ -300,9 +348,26 @@ const RUNTIME = String.raw`
   const notes = document.querySelector('.notes-panel');
   const hudPos = document.getElementById('hud-pos');
   const hudBeats = document.getElementById('hud-beats');
+  const hudTr = document.getElementById('hud-tr');
   const hudPres = document.getElementById('hud-pres');
   const overview = document.getElementById('overview');
   const laser = document.getElementById('laser');
+
+  const TR_MODES = ['cinematic', 'cube', 'glide', 'iris'];
+  const TR_NAMES = { cinematic: 'Cinematic', cube: 'Cubo 3D', glide: 'Glide', iris: 'Iris' };
+  let curTr = document.body.dataset.tr || 'cinematic';
+  const applyTr = (mode) => {
+    if (!TR_MODES.includes(mode)) return;
+    curTr = mode;
+    TR_MODES.forEach((m) => document.body.classList.toggle('tr-' + m, m === curTr));
+    if (hudTr) hudTr.textContent = '🎬 Efecto: ' + TR_NAMES[curTr] + ' (T)';
+  };
+  const cycleTr = () => {
+    const nextMode = TR_MODES[(TR_MODES.indexOf(curTr) + 1) % TR_MODES.length];
+    applyTr(nextMode);
+    sendSync();
+  };
+  if (hudTr) hudTr.onclick = (e) => { e.stopPropagation(); cycleTr(); };
 
   // En modo presentador, movemos el escenario en miniatura a la columna derecha
   let nextDeck = null, nextSlides = [];
@@ -324,7 +389,7 @@ const RUNTIME = String.raw`
   const sendSync = (extra = {}) => {
     if (syncing) return;
     const msg = {
-      s: i, b, beatMode,
+      s: i, b, beatMode, tr: curTr,
       blackout: document.body.classList.contains('show-blackout'),
       ...extra, t: Date.now()
     };
@@ -335,6 +400,9 @@ const RUNTIME = String.raw`
   const onSyncMsg = (msg) => {
     if (!msg) return;
     syncing = true;
+    if (typeof msg.tr === 'string' && msg.tr !== curTr) {
+      applyTr(msg.tr);
+    }
     if (typeof msg.beatMode === 'boolean' && msg.beatMode !== beatMode) {
       beatMode = msg.beatMode;
       document.body.classList.toggle('beat-mode', beatMode);
@@ -654,7 +722,11 @@ const RUNTIME = String.raw`
     if (beat === null) b = beatMode ? 0 : beats.length;
     else b = Math.max(0, Math.min(beats.length, beat));
 
-    slides.forEach((el, k) => el.classList.toggle('active', k === i));
+    slides.forEach((el, k) => {
+      el.classList.toggle('active', k === i);
+      el.classList.toggle('past', k < i);
+      el.classList.toggle('future', k > i);
+    });
     ovCards.forEach((el, k) => el.classList.toggle('active', k === i));
     applyBeats();
 
@@ -719,6 +791,7 @@ const RUNTIME = String.raw`
       sendSync();
     }
     else if (e.key === 'm' || e.key === 'M') toggleBeatMode();
+    else if (e.key === 't' || e.key === 'T') cycleTr();
     else if (e.key === 'l' || e.key === 'L') document.body.classList.toggle('show-laser');
     else if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
     else if (e.key === 'f' || e.key === 'F') {

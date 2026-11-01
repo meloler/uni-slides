@@ -149,12 +149,12 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 2. **`question`** — **LA GRAN PREGUNTA** de la sesión (≤14 palabras).
 3. **`example`** — El caso/encargo inicial que motiva la sesión (ej. «Lunes por la mañana en la agencia…»).
 4. **`agenda`** — Mapa de la sesión con 4 o 5 bloques (`steps`).
-5. **Para cada bloque:**
+5. **Para cada bloque (4–5 bloques de 6–8 diapositivas cada uno):**
    - `section` — Separador del bloque (`kicker`: `"Bloque N"`, `title`: la subpregunta).
-   - Desarrollo desglosado paso a paso combinando `concept`, `comparison`, `process`, `diagram`, `big-number`, `example` y `video`.
+   - Desarrollo desglosado paso a paso combinando `concept`, `comparison`, `process`, `diagram`, `big-number`, `example` (casos reales de España/empresas conocidas) y `video` (vídeo de YouTube).
    - `quiz` ("Para pensar en clase") + diapositiva siguiente con la **solución explicada para el profesor**.
 6. **`summary`** — Respuesta final a la gran pregunta + 4 conclusiones clave.
-7. **`process` o `concept` final** — Guía paso a paso de la tarea práctica/ejercicio de los alumnos (si el temario incluye una tarea).
+7. **`process` o `concept` final** — Guía paso a paso de la tarea práctica/ejercicio de los alumnos (si el temario incluye una tarea como TFS1).
 
 ---
 
@@ -164,9 +164,11 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 - **Bullets:** Máximo **3 bullets** por diapositiva (4 en `summary`), de **12 a 26 palabras** cada uno, empezando por `**Concepto en negrita**: explicación...`.
 - **Palabras por diapositiva:** Máximo **95 palabras** entre `body`, `bullets` y `callout`.
 - **Variedad visual:** No repitas el mismo `layout` más de **2 veces seguidas**.
-- **Imágenes:** Toda diapositiva `concept`, `example` y `question` lleva `image_prompt` en inglés (sin texto en la imagen) o `mermaid`.
+- **Imágenes y esquemas (`image_prompt` / `mermaid`):**
+  - Pon `image_prompt` únicamente en las **4 a 8 diapositivas más importantes** (portada `cover`, gran pregunta `question`, y los 3-5 casos o metáforas centrales) para evitar bloqueos por límite de llamadas de tu herramienta nativa de imágenes.
+  - En las demás diapositivas `concept` o `example`, usa un diagrama `mermaid` o déjalas sin `image_prompt`: el motor de `uni-slides` generará automáticamente una **lámina infográfica 3D editorial** con los conceptos clave de la diapositiva (nunca quedará un hueco vacío).
 - **Notas de orador (`notes`):** Obligatorias en todas las diapositivas. Guion hablado directo para el profesor («...»), sin meta-lenguaje tipo "Voy a provocar una respuesta...".
-- **Pulsos (`beat_notes`):** Obligatorio si la diapositiva tiene pulsos. Debe coincidir 1 a 1 con el número exacto de elementos con pulso en pantalla.
+- **Pulsos (`beat_notes`):** Obligatorio si la diapositiva tiene varios puntos. Array de strings con el guion hablado para cada pulso al pulsar la barra espaciadora (debe coincidir exactamente 1 a 1 con el número de elementos `.beat` de la diapositiva).
 
 ---
 
@@ -176,8 +178,8 @@ Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta de forma 
 
 1. **Diseña pedagógicamente y escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`**:
    - Analiza el temario, define los bloques y redacta las diapositivas (`concept`, `comparison`, `process`, `diagram`, `big-number`, etc.).
-   - Define el `image_style` general del tema y añade un `image_prompt` en inglés para cada diapositiva visual.
-   - Redacta las notas de orador (`notes` y `beat_notes`) 100% alineadas con la pantalla.
+   - Define el `image_style` general del tema y añade `image_prompt` en inglés en las **4 a 8 diapositivas clave** (o diagramas `mermaid` en las de arquitectura/flujo).
+   - Redacta las notas de orador (`notes` y `beat_notes`) 100% alineadas 1 a 1 con la pantalla.
 
 2. **Valida la estructura con `lint` (rápido y gratuito)**:
    ```bash
@@ -185,18 +187,15 @@ Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta de forma 
    ```
    Si hay avisos o errores, corrígelos en `deck.json`.
 
-3. **Genera las ilustraciones con tu herramienta nativa de imágenes (OAuth / Codex)**:
-   > ⚠️ **Regla por defecto:** Como el proxy de la terminal suele bloquear la llamada curl/fetch directa hacia `api.openai.com`, **debes generar tú mismo las imágenes usando tu herramienta nativa de imágenes**:
-   - Lee los `image_prompt` que definiste en `deck.json`.
-   - Genera cada imagen con tu herramienta integrada.
-   - Guárdalas en `$UNI_SLIDES_HOME/out/<slug>/images/s01.png`, `s02.png`, etc.
-   - Añade la ruta correspondiente en el campo `"image"` de cada diapositiva en `deck.json` (ej. `"image": "images/s01.png"`).
+3. **Genera las ilustraciones clave con tu herramienta nativa de imágenes (OAuth / Codex)**:
+   > ⚠️ **Regla por defecto:** Como el proxy de la terminal bloquea la llamada curl/fetch directa hacia `api.openai.com`, **genera las ilustraciones usando tu herramienta nativa de imágenes**:
+   - Genera las imágenes de tus `image_prompt` y guárdalas en `$UNI_SLIDES_HOME/out/<slug>/images/s01.png`, `s02.png`, etc. (si tu herramienta nativa limita a 1 imagen por turno, el compilador enlazará automáticamente las imágenes que existan en `images/` y generará láminas infográficas 3D editoriales para el resto de diapositivas).
 
-4. **Compila la presentación completa**:
+4. **Compila la presentación completa (HTML + PDF + PPTX cero-dependencias)**:
    ```bash
    node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --no-images --pdf --pptx
    ```
-   *(El compilador tomará tus imágenes ya generadas, resolverá los vídeos de YouTube, incrustará todo en base64 en un único archivo HTML interactivo y exportará el PDF y PPTX).*
+   *(El compilador enlazará automáticamente las imágenes de `images/`, resolverá los vídeos con catálogo verificado offline si el proxy bloquea YouTube, incrustará todo en un único archivo HTML interactivo con transiciones 3D/Cinematic y exportará tanto el PDF como el PPTX en modo cero-dependencias sin requerir Playwright ni npm install).*
 
 5. **Entrega al usuario los archivos resultantes**:
    - El archivo interactivo standalone (`.html`).
