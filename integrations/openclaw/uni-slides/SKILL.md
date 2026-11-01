@@ -150,27 +150,35 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 
 ---
 
-## 6. Flujo paso a paso
+## 6. Flujo paso a paso OBLIGATORIO para el agente
 
-0. **Comprueba el entorno y la API de OpenAI (solo la primera vez o si dudas):**
-   ```bash
-   node $UNI_SLIDES_HOME/src/cli.js check
-   ```
-   Verifica que detecte el archivo `.env` y que la generación de imágenes con OpenAI esté al 100% (o usa tu herramienta nativa de imágenes + `--no-images` si el proxy bloquea `api.openai.com`).
-   *(⚠️ **PROHIBIDO** generar gráficos caseros con SVG, Python o FFmpeg con textos superpuestos).*
+Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta de forma 100% autónoma este flujo:
 
-1. **Escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`** directamente con tu propio razonamiento.
-2. **Valida con `lint` (gratis, instantáneo):**
+1. **Diseña pedagógicamente y escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`**:
+   - Analiza el temario, define los bloques y redacta las diapositivas (`concept`, `comparison`, `process`, `diagram`, `big-number`, etc.).
+   - Define el `image_style` general del tema y añade un `image_prompt` en inglés para cada diapositiva visual.
+   - Redacta las notas de orador (`notes` y `beat_notes`) 100% alineadas con la pantalla.
+
+2. **Valida la estructura con `lint` (rápido y gratuito)**:
    ```bash
    node $UNI_SLIDES_HOME/src/cli.js lint $UNI_SLIDES_HOME/out/<slug>/deck.json
    ```
-   Si hay errores (`✖`), corrige tú mismo `deck.json` y repite hasta que quede limpio.
-3. **Compila (resuelve vídeos de YouTube + genera imágenes + exporta HTML interactivo portátil de 1 archivo, PDF ligero y Google Slides `.pptx`):**
+   Si hay avisos o errores, corrígelos en `deck.json`.
+
+3. **Genera las ilustraciones con tu herramienta nativa de imágenes (OAuth / Codex)**:
+   > ⚠️ **Regla por defecto:** Como el proxy de la terminal suele bloquear la llamada curl/fetch directa hacia `api.openai.com`, **debes generar tú mismo las imágenes usando tu herramienta nativa de imágenes**:
+   - Lee los `image_prompt` que definiste en `deck.json`.
+   - Genera cada imagen con tu herramienta integrada.
+   - Guárdalas en `$UNI_SLIDES_HOME/out/<slug>/images/s01.png`, `s02.png`, etc.
+   - Añade la ruta correspondiente en el campo `"image"` de cada diapositiva en `deck.json` (ej. `"image": "images/s01.png"`).
+
+4. **Compila la presentación completa**:
    ```bash
-   node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --pdf --pptx --json
+   node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --no-images --pdf --pptx
    ```
-   *(Usa `--no-images` si ya generaste las imágenes tú mismo o si el usuario pide un borrador rápido).*
-4. **Envía al usuario los 3 archivos resultantes:**
-   - **`standalone` (`<slug>-interactivo.html`, ~2-3 MB):** Un **único archivo `.html` 100% autocontenido** (con todas las imágenes ya incrustadas en base64, efectos de pulsos *Beats*, mosaico `O`, láser `L` y Consola del Profesor en Pantalla 1 con `Tecla P`).
-   - **`pdf` (`<slug>.pdf`, ~5-7 MB):** PDF ligero optimizado para subir directamente al Campus Virtual / Moodle de los alumnos.
-   - **`pptx` (`<slug>.pptx`):** Presentación editable para Google Slides / PowerPoint.
+   *(El compilador tomará tus imágenes ya generadas, resolverá los vídeos de YouTube, incrustará todo en base64 en un único archivo HTML interactivo y exportará el PDF y PPTX).*
+
+5. **Entrega al usuario los archivos resultantes**:
+   - El archivo interactivo standalone (`.html`).
+   - El PDF para imprimir o subir a Moodle (`.pdf`).
+   - El archivo PowerPoint/Google Slides (`.pptx`).
