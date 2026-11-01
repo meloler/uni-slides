@@ -136,15 +136,14 @@ const R = {
     const ytMatch = String(url).match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
     const ytId = ytMatch ? ytMatch[1] : '';
     const thumbStyle = s.image ? `style="background-image:url('${esc(s.image)}')"` : '';
-    // Si hay un callout (pregunta/debate post-vídeo), el vídeo va ANTES del callout para que al terminar el vídeo y dar Espacio vuelva a la diapo con la pregunta
+    // Al entrar en la diapositiva de vídeo (Pulso 0) se ve la portada del vídeo; al primer Espacio (Pulso 1) se reproduce el vídeo; al siguiente Espacio (Pulso 2) se cierra el reproductor y se vuelve a la diapositiva.
     return `
       <div class="txt">
         ${kicker({ kicker: s.kicker || '▶ Vídeo para ver en clase' })}
         <h2 class="anim">${md(s.title)}</h2>
         ${body(s)}
-        ${bullets(s.bullets)}
         <span class="beat video-beat-marker" data-yt-id="${esc(ytId)}" data-video-url="${esc(url)}" data-video-title="${esc(s.video_title || s.title)}"></span>
-        ${callout(s)}
+        ${s.callout ? callout(s) : '<span class="beat video-end-marker"></span>'}
       </div>
       <div class="yt-card anim a3" data-yt-id="${esc(ytId)}" data-video-url="${esc(url)}">
         <div class="yt-thumb ${s.image ? '' : 'ph'}" ${thumbStyle}>
@@ -412,8 +411,16 @@ const RUNTIME = String.raw`
       return {
         badge: '▶ VÍDEO EN PANTALLA · Pulso ' + bIdx + '/' + totalB,
         label: '🎬 REPRODUCIENDO VÍDEO EN EL PROYECTOR',
-        title: vTitle,
+        title: '▶ Reproducir vídeo: ' + vTitle,
         body: 'El vídeo se está reproduciendo a pantalla completa en el proyector.\n\nCuando termine el vídeo, pulsa ESPACIO (o Siguiente) para cerrar el reproductor y volver a la diapositiva.',
+      };
+    }
+    if (beatEl.classList.contains('video-end-marker')) {
+      return {
+        badge: 'Fin del vídeo · Pulso ' + bIdx + '/' + totalB,
+        label: '✅ DE VUELTA A LA DIAPOSITIVA',
+        title: 'Regresar a la diapositiva',
+        body: customNote || 'Vídeo finalizado y reproductor cerrado. Pulsa ESPACIO cuando quieras avanzar a la siguiente diapositiva.',
       };
     }
     const isCallout = beatEl.classList.contains('callout');
@@ -462,7 +469,8 @@ const RUNTIME = String.raw`
           const dot = document.createElement('button');
           dot.className = 'pr-dot' + (step === b ? ' active' : (step < b ? ' done' : ''));
           const isVidStep = step > 0 && beats[step - 1]?.classList.contains('video-beat-marker');
-          dot.textContent = step === 0 ? 'Intro' : (isVidStep ? '▶ Vídeo' : step);
+          const isVidEndStep = step > 0 && beats[step - 1]?.classList.contains('video-end-marker');
+          dot.textContent = step === 0 ? 'Intro' : (isVidStep ? '▶ Vídeo' : (isVidEndStep ? '✓ Fin' : step));
           dot.title = getStepInfo(i, step).title;
           dot.onclick = () => show(i, step);
           dotsEl.appendChild(dot);
