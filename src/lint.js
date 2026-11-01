@@ -6,12 +6,34 @@ const words = (t) => (t || '').replace(/\*\*/g, '').trim().split(/\s+/).filter(B
 const VISUAL_REQUIRED = ['concept', 'example', 'question'];
 const ASSERTION_TITLES = ['concept', 'example', 'diagram', 'big-number', 'comparison', 'process', 'video'];
 
+export function countSpokenBeats(s) {
+  switch (s.layout) {
+    case 'concept':
+    case 'example':
+      return (s.bullets?.length || 0) + (s.callout ? 1 : 0);
+    case 'comparison':
+      return (s.columns || []).slice(0, 2).reduce((acc, col) => acc + (col.bullets?.length || 0), 0);
+    case 'process':
+    case 'agenda':
+      return s.steps?.length || 0;
+    case 'summary':
+      return s.bullets?.length || 0;
+    case 'quiz':
+      return (s.questions?.length || 0) + (s.callout ? 1 : 0);
+    case 'video':
+      return s.callout ? 1 : 0;
+    default:
+      return 0;
+  }
+}
+
 export function lintDeck(deck) {
   const issues = [];
   const add = (i, level, msg) => issues.push({ slide: i + 1, level, msg });
   const slides = deck.slides || [];
 
   if (slides.length < 10) add(-1, 'error', `Solo hay ${slides.length} diapositivas; mínimo 10.`);
+  if (slides.length > 42) add(-1, 'warn', `Hay ${slides.length} diapositivas; procura no pasar de 40 para no alargar artificialmente el tema.`);
   if (slides[0]?.layout !== 'cover') add(0, 'warn', 'La primera diapositiva debería ser "cover".');
   if (!slides.slice(0, 3).some((s) => s.layout === 'question'))
     add(1, 'error', 'Falta la GRAN PREGUNTA ("question") al principio.');
@@ -19,11 +41,9 @@ export function lintDeck(deck) {
   if (!slides.slice(-4).some((s) => s.layout === 'summary'))
     add(slides.length - 1, 'error', 'Falta "summary" al final que responda la gran pregunta.');
 
-  if (slides.length >= 25) {
-    const videos = slides.filter((s) => s.layout === 'video').length;
+  if (slides.length >= 20) {
     const examples = slides.filter((s) => s.layout === 'example').length;
-    if (videos < 2) add(-1, 'warn', `Solo hay ${videos} vídeos de YouTube; incluye al menos 2-3 para dinamizar los 60 min.`);
-    if (examples < 3) add(-1, 'warn', `Solo hay ${examples} casos reales ("example"); incluye al menos 4.`);
+    if (examples < 2) add(-1, 'warn', `Solo hay ${examples} casos reales ("example"); incluye al menos 2-3 conectados al temario.`);
   }
 
   let streak = 1;
@@ -67,17 +87,23 @@ export function lintDeck(deck) {
       }
     }
 
-    // Comprobación de beats y beat_notes
-    let expectedBeats = 0;
-    if (s.bullets?.length) expectedBeats += s.bullets.length;
-    if (s.steps?.length) expectedBeats += s.steps.length;
-    if (s.columns?.length) expectedBeats += s.columns.length;
-    if (s.questions?.length) expectedBeats += s.questions.length;
-    if (s.callout) expectedBeats += 1;
-    if (s.layout === 'video') expectedBeats += 1;
+    // Comprobación estricta 1 a 1 de beats y beat_notes
+    if (s.layout === 'video' && (s.bullets?.length || 0) > 0) {
+      add(i, 'error', 'En diapositivas "video" no pongas "bullets" previos ni tareas antes del vídeo; deja "bullets" vacío para que al pulsar Espacio se reproduzca directamente el vídeo.');
+    }
+    if (['comparison', 'process', 'agenda', 'summary'].includes(s.layout) && s.callout) {
+      add(i, 'warn', `El layout "${s.layout}" no muestra "callout" en pantalla; elimínalo para no desfasar "beat_notes".`);
+    }
 
-    if (expectedBeats >= 2 && (!s.beat_notes || s.beat_notes.length === 0)) {
-      add(i, 'warn', `Esta diapositiva tiene ${expectedBeats} pulsos pero "beat_notes" está vacío. Añade un array de strings con el guion hablado para cada pulso al pulsar Espacio.`);
+    const expectedBeats = countSpokenBeats(s);
+    const actualNotes = Array.isArray(s.beat_notes) ? s.beat_notes.filter((n) => String(n || '').trim().length > 0).length : 0;
+
+    if (expectedBeats > 0 && actualNotes !== expectedBeats) {
+      add(
+        i,
+        'error',
+        `Desfase en notas por pulso: la diapositiva tiene ${expectedBeats} elementos con pulso en pantalla pero "beat_notes" tiene ${actualNotes} notas. Deben coincidir exactamente 1 a 1 (en "comparison", suma los bullets de las 2 columnas).`
+      );
     }
 
     if (i > 0 && s.layout === slides[i - 1].layout && s.layout !== 'section') {

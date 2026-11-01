@@ -1,6 +1,6 @@
 ---
 name: uni-slides
-description: "Diseña y genera presentaciones de clase visuales (estilo Gamma) en Web, PDF y Google Slides (.pptx) en Modo Profesor Guiado (35–42 diapositivas para 60 min, tarjetas Concepto + Mini-explicación para no depender de las notas de orador, casos reales, vídeos de YouTube verificados y preguntas con su diapositiva de respuesta). El propio agente escribe deck.json y usa la CLI para validar y compilar."
+description: "Diseña y genera presentaciones de clase visuales (estilo Gamma) en Web, PDF y Google Slides (.pptx) en Modo Profesor Guiado (con el número de diapositivas que el tema requiera sin pasar de ~40, tarjetas Concepto + Mini-explicación y notas de orador 100% alineadas pulso a pulso con lo que se ve en pantalla). El propio agente escribe deck.json y usa la CLI para validar y compilar."
 metadata:
   openclaw:
     emoji: "🎓"
@@ -22,27 +22,32 @@ La herramienta está instalada en `$UNI_SLIDES_HOME` (por defecto `~/uni-slides`
 
 El profesor a veces imparte temas que no domina al 100%, no siempre puede ver las notas de orador en el proyector del aula y suele avanzar rápido (~1 min por diapositiva). Por tanto:
 
-1. **Volumen para 60 minutos: entre 34 y 42 diapositivas.**
-   - **No comprimas el temario.** Si el temario trae una tabla con 4 situaciones, 4 comprobaciones, 5 licencias Creative Commons o 6 formatos de archivo, **no los metas apretados en una sola diapositiva**: dedica una diapositiva de introducción y luego **una diapositiva detallada por cada elemento o pareja de elementos** con su caso real.
-2. **Tarjetas `Concepto + Mini-explicación` en pantalla (para no necesitar notas de orador):**
+1. **Número natural de diapositivas según el temario (normalmente 20–34, máximo ~40):**
+   - **No rellenes por rellenar ni fuerces 42 diapositivas si el tema no lo pide.** Crea las diapositivas que el temario requiera de forma natural (suele estar entre 20 y 34 diapositivas, sin pasarte de 40).
+   - Si el temario trae una tabla importante (p. ej. 4 situaciones, 5 licencias Creative Commons o varios formatos), dale espacio para que se lea con claridad, pero **mantente 100% fiel al temario** sin inventar tareas ni bloques artificiales.
+2. **Tarjetas `Concepto + Mini-explicación` en pantalla:**
    - Nunca pongas bullets crípticos de 3 palabras (`"Portal ≠ recurso"`).
    - Cada bullet debe tener entre **12 y 24 palabras** con la estructura:
-     `**Concepto o idea clave**: explicación completa y natural que el profesor puede leer o parafrasear directamente en clase.`
-   - Así el alumno escanea rápidamente lo que va en `**negrita**` (en color de acento) y el profesor tiene toda la explicación delante sin mirar notas.
-3. **Banda inferior `callout` en las diapositivas:**
-   - Rellena el campo `callout` con la analogía, el matiz clave o la pregunta para lanzar al aula (ej. `"💡 Analogía: Ver la carta de un restaurante en Instagram no te da permiso para editar sus precios y usarla en tu web."`).
-4. **Vídeos de YouTube (`layout: "video"`) para dinamizar y dar aire a la clase:**
-   - Incluye **entre 2 y 3 diapositivas `video`** repartidas en la presentación (una por bloque principal).
-   - Pon en `video_query` términos de búsqueda claros en español (ej. `"que es open data datos abiertos explicacion español"` o `"licencias creative commons explicadas en español"`). El compilador buscará automáticamente un vídeo real en YouTube, descargará su miniatura y pondrá el enlace clicable.
-   - En los 3 `bullets` de la diapositiva `video`, explica **qué deben fijarse los alumnos durante el vídeo y qué conclusión comentar al terminar**.
-5. **Toda pregunta o debate (`quiz`) lleva su respuesta en la diapositiva siguiente:**
-   - Cuando incluyas una diapositiva `quiz` con las preguntas de *"Para pensar"*, añade justo después una diapositiva (`concept` o `comparison`) con **las respuestas razonadas**, para que el profesor nunca se quede en blanco tras escuchar a los alumnos.
-6. **Guion de profesor OBLIGATORIO por cada pulso (`notes` + `beat_notes`) para la Consola en Pantalla 1 (`Tecla P`):**
-   - El profesor usa una ventana de presentador en su Pantalla 1 mientras proyecta en el aula (`Tecla P`).
-   - Durante la clase **no tiene tiempo de descifrar notas teóricas complejas ni instrucciones sobre lo que "va a hacer"**. Necesita un **guion hablado directo y sencillo («...»)** que pueda leer o parafrasear al instante:
-     - `notes`: Guion hablado de **Apertura (Pulso 0)** para presentar el tema o soltar una pregunta/anécdota antes de pulsar Espacio.
-     - `beat_notes`: Array de strings con el **guion hablado exacto para cada pulso que aparece al pulsar Espacio** (tantos elementos como bullets, pasos o columnas tenga la diapositiva + 1 al final si hay `callout`).
-   - *(Consulta la Sección 2 para ver ejemplos exactos de cómo escribir este guion).*
+     `**Concepto o idea clave**: explicación completa y natural conectada con el temario.`
+3. **Banda inferior `callout` (solo en `concept`, `example` y `quiz`):**
+   - Rellena el campo `callout` en diapositivas `concept`, `example` o `quiz` con la idea clave o conclusión conectada al temario.
+   - ⚠️ **No pongas `callout` en `comparison`, `process`, `agenda` ni `summary`** (esos layouts no muestran `callout` en pantalla).
+4. **Vídeos de YouTube (`layout: "video"`): reproducción directa al pulsar Espacio, SIN bullets previos ni tareas inventadas:**
+   - Incluye **1 o 2 diapositivas `video`** cuando aporten valor real al tema.
+   - Pon en `video_query` términos de búsqueda claros en español y en `body` una sola frase breve de contexto.
+   - ⚠️ **PROHIBIDO poner `bullets` en diapositivas `video` y PROHIBIDO inventar tareas que no estén en el temario** (nada de *"Mientras miramos: identifica..."* ni *"Después del vídeo: anota..."*). Deja siempre `"bullets": []` en las diapositivas `video` para que al pulsar Espacio se reproduzca directamente el vídeo en pantalla, y al volver a pulsar Espacio regrese a la diapositiva.
+5. **Toda pregunta o debate del temario (`quiz`) lleva su respuesta en la diapositiva siguiente:**
+   - Cuando el temario incluya preguntas de reflexión o ejercicios, añade justo después una diapositiva con **las respuestas razonadas según el propio temario**, para que el profesor nunca se quede en blanco.
+6. **Alineación ESTRICTA 1 a 1 entre la tarjeta en pantalla y el guion del profesor (`notes` + `beat_notes`):**
+   - En la Consola del Profesor (`Tecla P`), cada vez que el profesor pulsa Espacio se ilumina un elemento en el proyector (un bullet, un paso o una tarjeta de columna) y a la izquierda aparece su nota `beat_notes[k]`.
+   - **REGLA CRÍTICA:** La nota `beat_notes[k]` **DEBE hablar exactamente del mismo concepto que el alumno está viendo iluminado en ese pulso**, explicándolo con otras palabras más sencillas y cercanas, pero sin saltar a otro punto ni contar algo desconectado.
+   - **Conteo exacto de `beat_notes` por layout (validado por `lint`):**
+     - `concept` y `example`: `bullets.length + (callout ? 1 : 0)` notas.
+     - `comparison`: **suma de todos los bullets de la Columna 1 + todos los bullets de la Columna 2** (p. ej. si la Columna 1 tiene 2 bullets y la Columna 2 tiene 2 bullets, `beat_notes` DEBE tener **4 strings** en ese mismo orden: primero los 2 de la izquierda y luego los 2 de la derecha).
+     - `process` y `agenda`: `steps.length` notas.
+     - `summary`: `bullets.length` notas.
+     - `quiz`: `questions.length + (callout ? 1 : 0)` notas.
+     - `video`: `0` notas (o `1` si lleva `callout`).
 
 ---
 
@@ -124,12 +129,12 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 2. **`question`** — **LA GRAN PREGUNTA** de la sesión (≤14 palabras).
 3. **`example`** — El caso/encargo inicial que motiva la sesión (ej. «Lunes por la mañana en la agencia…»).
 4. **`agenda`** — Mapa de la sesión con 4 o 5 bloques (`steps`).
-5. **Para cada bloque (4–5 bloques de 6–8 diapositivas cada uno):**
+5. **Para cada bloque:**
    - `section` — Separador del bloque (`kicker`: `"Bloque N"`, `title`: la subpregunta).
-   - Desarrollo desglosado paso a paso combinando `concept`, `comparison`, `process`, `diagram`, `big-number`, `example` (casos reales de España/empresas conocidas) y `video` (vídeo de YouTube).
+   - Desarrollo desglosado paso a paso combinando `concept`, `comparison`, `process`, `diagram`, `big-number`, `example` y `video`.
    - `quiz` ("Para pensar en clase") + diapositiva siguiente con la **solución explicada para el profesor**.
 6. **`summary`** — Respuesta final a la gran pregunta + 4 conclusiones clave.
-7. **`process` o `concept` final** — Guía paso a paso de la tarea práctica/ejercicio de los alumnos (si el temario incluye una tarea como TFS1).
+7. **`process` o `concept` final** — Guía paso a paso de la tarea práctica/ejercicio de los alumnos (si el temario incluye una tarea).
 
 ---
 
@@ -141,7 +146,7 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 - **Variedad visual:** No repitas el mismo `layout` más de **2 veces seguidas**.
 - **Imágenes:** Toda diapositiva `concept`, `example` y `question` lleva `image_prompt` en inglés (sin texto en la imagen) o `mermaid`.
 - **Notas de orador (`notes`):** Obligatorias en todas las diapositivas. Guion hablado directo para el profesor («...»), sin meta-lenguaje tipo "Voy a provocar una respuesta...".
-- **Pulsos (`beat_notes`):** Obligatorio si la diapositiva tiene varios puntos. Array de strings con el guion hablado para cada pulso al pulsar la barra espaciadora.
+- **Pulsos (`beat_notes`):** Obligatorio si la diapositiva tiene pulsos. Debe coincidir 1 a 1 con el número exacto de elementos con pulso en pantalla.
 
 ---
 
@@ -151,8 +156,8 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
    ```bash
    node $UNI_SLIDES_HOME/src/cli.js check
    ```
-   Verifica que detecte el archivo `.env` y que la generación de imágenes con OpenAI esté al 100%.
-   *(⚠️ **PROHIBIDO** generar gráficos caseros con SVG, Python o FFmpeg con textos superpuestos. Las ilustraciones deben ser generadas exclusivamente por el motor oficial de `cli.js compile` usando OpenAI).*
+   Verifica que detecte el archivo `.env` y que la generación de imágenes con OpenAI esté al 100% (o usa tu herramienta nativa de imágenes + `--no-images` si el proxy bloquea `api.openai.com`).
+   *(⚠️ **PROHIBIDO** generar gráficos caseros con SVG, Python o FFmpeg con textos superpuestos).*
 
 1. **Escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`** directamente con tu propio razonamiento.
 2. **Valida con `lint` (gratis, instantáneo):**
@@ -164,8 +169,8 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
    ```bash
    node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --pdf --pptx --json
    ```
-   *(Usa `--no-images` si el usuario pide un borrador rápido sin coste de imágenes).*
+   *(Usa `--no-images` si ya generaste las imágenes tú mismo o si el usuario pide un borrador rápido).*
 4. **Envía al usuario los 3 archivos resultantes:**
-   - **`standalone` (`<slug>-interactivo.html`, ~2-3 MB):** Un **único archivo `.html` 100% autocontenido** (con todas las imágenes ya incrustadas en base64, efectos de pulsos *Beats*, mosaico `O`, láser `L` y Consola del Profesor en Pantalla 1 con `Tecla P`). El profesor puede descargarlo desde Telegram/WhatsApp en el ordenador del aula y abrirlo con doble clic sin necesitar carpetas ni conexión.
+   - **`standalone` (`<slug>-interactivo.html`, ~2-3 MB):** Un **único archivo `.html` 100% autocontenido** (con todas las imágenes ya incrustadas en base64, efectos de pulsos *Beats*, mosaico `O`, láser `L` y Consola del Profesor en Pantalla 1 con `Tecla P`).
    - **`pdf` (`<slug>.pdf`, ~5-7 MB):** PDF ligero optimizado para subir directamente al Campus Virtual / Moodle de los alumnos.
    - **`pptx` (`<slug>.pptx`):** Presentación editable para Google Slides / PowerPoint.

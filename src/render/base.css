@@ -122,7 +122,7 @@ ul.bullets li::before {
 .l-split .callout { margin-top: 18px; padding: 15px 22px; font-size: 24px; }
 
 /* Tarjeta de vídeo de YouTube */
-.video-beat-marker { display: none !important; }
+.video-beat-marker, .video-end-marker { display: none !important; }
 .yt-card {
   display: flex; flex-direction: column; text-decoration: none; color: var(--fg);
   background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-lg);
