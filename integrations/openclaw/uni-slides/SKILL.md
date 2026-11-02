@@ -187,16 +187,12 @@ Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta de forma 
    ```
    Si hay avisos o errores, corrígelos en `deck.json`.
 
-3. **Genera las ilustraciones clave con tu herramienta nativa de imágenes (OAuth / Codex)**:
-   > ⚠️ **Regla por defecto:** Como el proxy de la terminal bloquea la llamada curl/fetch directa hacia `api.openai.com`, **genera las ilustraciones usando tu herramienta nativa de imágenes**:
-   - Genera imágenes individuales a resolución completa (`1024x1024` o `1536x1024`) sin texto ni rótulos dentro de la ilustración (`"no text, no words, no letters, no labels"`), y guárdalas en `$UNI_SLIDES_HOME/out/<slug>/images/s01.png`, `s06.png`, etc.
-   - ❌ **PROHIBIDO generar mosaicos 2×2 con rótulos o textos y recortarlos en 4 trozos**, ya que los recortes dejan palabras cortadas y composiciones descentradas. Es preferible tener entre 4 y 8 ilustraciones individuales impecables a resolución completa y dejar que el motor vectorial 3D de `uni-slides` genere las láminas infográficas editoriales del resto de diapositivas.
-
-4. **Compila la presentación completa (HTML + PDF píxel-perfecto + PPTX con notas de orador)**:
+3. **Compila la presentación y genera las ilustraciones con OpenAI automáticamente**:
+   - Ejecuta directamente `compile` **SIN `--no-images`** para que el propio motor de `uni-slides` llame a la API de OpenAI (`OPENAI_API_KEY` configurada en `~/uni-slides/.env`), genere todas las ilustraciones de los `image_prompt` en paralelo y exporte el HTML interactivo, el PDF píxel-perfecto (con `playwright-core` + Chrome) y el PPTX con todas las notas de orador:
    ```bash
-   node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --no-images --pdf --pptx
+   node $UNI_SLIDES_HOME/src/cli.js compile $UNI_SLIDES_HOME/out/<slug>/deck.json --pdf --pptx
    ```
-   *(El compilador enlazará automáticamente las imágenes de `images/`, resolverá los vídeos con catálogo verificado offline si el proxy bloquea YouTube, incrustará todo en un único archivo HTML interactivo con transiciones 3D/Cinematic, exportará el PDF 16:9 píxel a píxel usando `playwright-core` + `/usr/bin/google-chrome` por capturas sin colapsar la memoria del contenedor, y generará el PPTX incluyendo todas las notas de orador `notes` y `beat_notes`).*
+   - *(Plan B solo si el proxy sigue bloqueando `api.openai.com` con HTTP 403)*: Si ves que las llamadas a la API dan error de proxy, genera entre 4 y 8 imágenes individuales limpias (sin texto ni mosaicos 2×2) con tu herramienta nativa `image_generate`, guárdalas en `out/<slug>/images/sXX.png` y vuelve a ejecutar con `--no-images`.
 
 5. **Entrega al usuario los archivos resultantes**:
    - El archivo interactivo standalone (`.html`).

@@ -53,7 +53,9 @@ const NO_TEXT = 'Absolutely no text, letters, numbers, watermarks or logos in th
 const FULL_BLEED = ['cover', 'question', 'quote', 'big-number'];
 
 export function getSlideImageSize(slide) {
-  return FULL_BLEED.includes(slide.layout) ? '1536x864' : '1024x1024';
+  const m = IMAGE_MODEL();
+  if (!FULL_BLEED.includes(slide.layout)) return '1024x1024';
+  return m.includes('flare') ? '1536x864' : '1536x1024';
 }
 
 export function buildPrompt(deck, slide) {
