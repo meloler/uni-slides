@@ -1,16 +1,34 @@
 // Exporta la presentación a PDF (1920x1080 / 16:9).
-// 1) Usa Playwright si está disponible.
-// 2) Si no, busca cualquier binario de Chromium/Chrome en el sistema o en la caché de Playwright.
-// 3) Si el contenedor no tiene ningún navegador instalado, usa el motor PDF nativo en Node puro (0 dependencias, soporta imágenes PNG/JPEG y temas).
+// 1) Usa Playwright o playwright-core (incluyendo la instalación global de OpenClaw en /root/.openclaw/workspace/node_modules/playwright-core) + Google Chrome / Chromium.
+//    Captura cada diapositiva a 1920x1080 real (bloqueando peticiones externas para que el proxy no bloquee ni cuelgue Chrome, y sin usar page.pdf() para evitar cierres por memoria /dev/shm en contenedores) y ensambla un PDF 16:9 idéntico píxel a píxel al HTML Aurora/Neón/Paper.
+// 2) Si no hay navegador en el sistema, usa el motor PDF nativo en Node puro (0 dependencias, respetando proporción de imágenes).
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import zlib from 'node:zlib';
 
-async function findPlaywrightCachedBrowser() {
+async function findPlaywrightModule() {
+  const candidates = [
+    'playwright',
+    'playwright-core',
+    '/root/.openclaw/workspace/node_modules/playwright-core/index.mjs',
+    '/root/.openclaw/workspace/node_modules/playwright-core/index.js',
+    '/root/.openclaw/node_modules/playwright-core/index.js',
+    path.join(os.homedir(), '.openclaw', 'workspace', 'node_modules', 'playwright-core', 'index.js'),
+  ];
+  for (const modPath of candidates) {
+    try {
+      const m = await import(modPath.startsWith('/') || modPath.includes(':\\') ? pathToFileURL(modPath).href : modPath);
+      if (m?.chromium) return m.chromium;
+      if (m?.default?.chromium) return m.default.chromium;
+    } catch {}
+  }
+  return null;
+}
+
+async function findBrowserExecutable() {
   const roots = [
     path.join(os.homedir(), '.cache', 'ms-playwright'),
     '/root/.cache/ms-playwright',
@@ -34,140 +52,179 @@ async function findPlaywrightCachedBrowser() {
       }
     } catch {}
   }
+  const sysBins = [
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+  for (const b of sysBins) {
+    if (existsSync(b)) return b;
+  }
   return null;
 }
 
+/**
+ * Empaqueta un array de capturas JPEG (1920x1080) en un documento PDF 1.4 panorámico (16:9)
+ * sin recodificar los flujos JPEG (/DCTDecode directo).
+ */
+export async function buildJpegSlidesPDF(jpegBuffers, pdfFile) {
+  const W = 1440;
+  const H = 810;
+  const objects = [];
+  const addObj = (header, streamBuf = null) => {
+    const id = objects.length + 1;
+    objects.push({ id, header, streamBuf });
+    return id;
+  };
+
+  const pageIds = [];
+  for (let i = 0; i < jpegBuffers.length; i++) {
+    const buf = jpegBuffers[i];
+    const dims = parseJpegDimensions(buf) || { w: 1920, h: 1080 };
+    const imgId = addObj(
+      `<< /Type /XObject /Subtype /Image /Width ${dims.w} /Height ${dims.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${buf.length} >>`,
+      buf
+    );
+    const ops = `q\n${W} 0 0 ${H} 0 0 cm\n/Im${imgId} Do\nQ\n`;
+    const streamBuf = Buffer.from(ops, 'latin1');
+    const contentId = addObj(`<< /Length ${streamBuf.length} >>`, streamBuf);
+    const pageId = addObj(
+      `<< /Type /Page /Parent 0 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im${imgId} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>`
+    );
+    pageIds.push(pageId);
+  }
+
+  const pagesId = addObj(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
+  for (const pid of pageIds) {
+    objects[pid - 1].header = objects[pid - 1].header.replace('/Parent 0 0 R', `/Parent ${pagesId} 0 R`);
+  }
+  const catalogId = addObj(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+
+  const chunks = [Buffer.from('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n', 'binary')];
+  const offsets = [0];
+  let offset = chunks[0].length;
+
+  for (const obj of objects) {
+    offsets.push(offset);
+    const headBuf = Buffer.from(`${obj.id} 0 obj\n${obj.header}\n`, 'latin1');
+    chunks.push(headBuf);
+    offset += headBuf.length;
+    if (obj.streamBuf) {
+      const sStart = Buffer.from('stream\n', 'latin1');
+      const sEnd = Buffer.from('\nendstream\n', 'latin1');
+      chunks.push(sStart, obj.streamBuf, sEnd);
+      offset += sStart.length + obj.streamBuf.length + sEnd.length;
+    }
+    const endObj = Buffer.from('endobj\n', 'latin1');
+    chunks.push(endObj);
+    offset += endObj.length;
+  }
+
+  const xrefOffset = offset;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objects.length; i++) {
+    xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  }
+  xref += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  chunks.push(Buffer.from(xref, 'latin1'));
+
+  await writeFile(pdfFile, Buffer.concat(chunks));
+  return pdfFile;
+}
+
 export async function exportPDF(htmlFile, pdfFile, { screenshotsDir = null, deck = null, outDir = null } = {}) {
-  // 1. Intentar con Playwright si está disponible
+  // 1. Intentar con Playwright / playwright-core + Chrome local (captura fiel 1920x1080 por diapositiva)
   try {
-    const { chromium } = await import('playwright');
-    const browser = await chromium.launch({ args: ['--allow-file-access-from-files', '--no-sandbox'] });
+    const chromium = await findPlaywrightModule();
+    if (!chromium) throw new Error('Playwright no encontrado');
+    const executablePath = await findBrowserExecutable();
+    const launchOpts = {
+      headless: true,
+      args: [
+        '--allow-file-access-from-files',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+    };
+    if (executablePath) launchOpts.executablePath = executablePath;
+
+    let browser;
     try {
-      const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-      await page.goto(pathToFileURL(htmlFile).href, { waitUntil: 'networkidle' });
-      await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
+      browser = await chromium.launch(launchOpts);
+    } catch {
+      delete launchOpts.executablePath;
+      browser = await chromium.launch(launchOpts);
+    }
 
-      if (screenshotsDir) {
-        await page.evaluate(() => {
-          document.body.classList.remove('beat-mode');
-          const h = document.querySelector('.hud');
-          if (h) h.style.display = 'none';
+    try {
+      const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+      // Bloquear llamadas de red externas (fuentes/iframes) para que un proxy con 403 nunca congele la carga
+      await page.route(/^https?:\/\//, (route) => route.abort());
+      await page.goto(pathToFileURL(htmlFile).href, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForFunction(() => window.__ready === true, null, { timeout: 15000 }).catch(() => {});
+
+      await page.evaluate(() => {
+        document.body.classList.remove('beat-mode');
+        document.body.setAttribute('data-transition', 'none');
+        const h = document.querySelector('.hud');
+        if (h) h.style.display = 'none';
+        const p = document.querySelector('.progress');
+        if (p) p.style.display = 'none';
+        document.querySelectorAll('.beat').forEach((el) => {
+          el.classList.add('shown', 'current');
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          el.style.filter = 'none';
         });
-        const n = await page.locator('.slide').count();
+      });
+
+      const n = await page.locator('.slide').count();
+      if (n > 0) {
+        const jpegBuffers = [];
         for (let k = 1; k <= n; k++) {
-          await page.evaluate((k) => window.__show(k - 1), k);
-          await page.waitForTimeout(1000);
-          await page.screenshot({ path: `${screenshotsDir}/slide-${String(k).padStart(2, '0')}.png` });
+          await page.evaluate((idx) => {
+            window.__show(idx);
+            document.body.classList.remove('beat-mode');
+            document.querySelectorAll('.slide.active .beat').forEach((el) => {
+              el.classList.add('shown');
+              el.style.opacity = '1';
+              el.style.transform = 'none';
+              el.style.filter = 'none';
+            });
+          }, k - 1);
+          await page.waitForTimeout(80);
+          if (screenshotsDir) {
+            await page.screenshot({ path: `${screenshotsDir}/slide-${String(k).padStart(2, '0')}.png` });
+          }
+          const jpg = await page.screenshot({ type: 'jpeg', quality: 90 });
+          jpegBuffers.push(jpg);
         }
+        await buildJpegSlidesPDF(jpegBuffers, pdfFile);
+        return pdfFile;
       }
-
-      const baseDir = path.dirname(htmlFile);
-      const relUrls = await page.evaluate(() => {
-        return [...document.querySelectorAll('.img, .yt-thumb')].map((el) => {
-          const m = /url\(['"]?(.*?)['"]?\)/.exec(el.style.backgroundImage);
-          return m ? m[1] : null;
-        });
-      });
-
-      const dataMap = {};
-      for (const u of new Set(relUrls.filter(Boolean))) {
-        if (u.startsWith('data:') || u.startsWith('http')) continue;
-        const abs = path.resolve(baseDir, decodeURIComponent(u));
-        if (existsSync(abs)) {
-          const buf = await readFile(abs);
-          const ext = path.extname(abs).toLowerCase() === '.png' ? 'png' : 'jpeg';
-          dataMap[u] = `data:image/${ext};base64,${buf.toString('base64')}`;
-        }
-      }
-
-      await page.evaluate(async (map) => {
-        const els = [...document.querySelectorAll('.img, .yt-thumb')];
-        for (const el of els) {
-          const m = /url\(['"]?(.*?)['"]?\)/.exec(el.style.backgroundImage);
-          if (!m || !map[m[1]]) continue;
-          const src = map[m[1]];
-          await new Promise((resolve) => {
-            const im = new Image();
-            im.onload = () => {
-              try {
-                const isFull = el.classList.contains('bg-full');
-                const maxW = isFull ? 1152 : 720;
-                const scale = Math.min(1, maxW / (im.naturalWidth || 1024));
-                const c = document.createElement('canvas');
-                c.width = Math.round((im.naturalWidth || 1024) * scale);
-                c.height = Math.round((im.naturalHeight || 1024) * scale);
-                const ctx = c.getContext('2d');
-                ctx.fillStyle = '#0b0d17';
-                ctx.fillRect(0, 0, c.width, c.height);
-                ctx.drawImage(im, 0, 0, c.width, c.height);
-                const jpegUrl = c.toDataURL('image/jpeg', 0.72);
-                el.style.backgroundImage = `url("${jpegUrl}")`;
-              } catch {}
-              resolve();
-            };
-            im.onerror = resolve;
-            im.src = src;
-          });
-        }
-      }, dataMap);
-
-      await page.addStyleTag({
-        content: `@media print { .card, ul.bullets li, .callout { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; } }`,
-      });
-
-      await page.emulateMedia({ media: 'print' });
-      await page.pdf({ path: pdfFile, width: '1920px', height: '1080px', printBackground: true, preferCSSPageSize: true });
-      return pdfFile;
     } finally {
       await browser.close();
     }
-  } catch {
-    // 2. Fallback: usar Chromium / Google Chrome del sistema o de la caché de Playwright
-    const cachedPw = await findPlaywrightCachedBrowser();
-    const candidates = [
-      cachedPw,
-      'chromium',
-      'chromium-browser',
-      'google-chrome',
-      'google-chrome-stable',
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-      '/usr/bin/google-chrome',
-    ].filter(Boolean);
+  } catch {}
 
-    for (const bin of candidates) {
-      try {
-        execFileSync(
-          bin,
-          [
-            '--headless',
-            '--disable-gpu',
-            '--no-sandbox',
-            '--allow-file-access-from-files',
-            '--print-to-pdf-no-header',
-            `--print-to-pdf=${pdfFile}`,
-            pathToFileURL(htmlFile).href,
-          ],
-          { stdio: 'ignore', timeout: 60000 }
-        );
-        if (existsSync(pdfFile)) return pdfFile;
-      } catch {}
+  // 2. Fallback universal cero-dependencias: generador PDF nativo en Node puro (sin navegador externo)
+  const baseDir = outDir || path.dirname(htmlFile);
+  let deckObj = deck;
+  if (!deckObj) {
+    const deckPath = path.join(baseDir, 'deck.json');
+    if (existsSync(deckPath)) {
+      deckObj = JSON.parse(await readFile(deckPath, 'utf8'));
     }
-
-    // 3. Fallback universal cero-dependencias: generador PDF nativo en Node puro (sin navegador externo)
-    const baseDir = outDir || path.dirname(htmlFile);
-    let deckObj = deck;
-    if (!deckObj) {
-      const deckPath = path.join(baseDir, 'deck.json');
-      if (existsSync(deckPath)) {
-        deckObj = JSON.parse(await readFile(deckPath, 'utf8'));
-      }
-    }
-    if (deckObj) {
-      return await exportPureNodePDF(deckObj, baseDir, pdfFile);
-    }
-    throw new Error('No se encontró navegador ni deck.json para exportar a PDF.');
   }
+  if (deckObj) {
+    return await exportPureNodePDF(deckObj, baseDir, pdfFile);
+  }
+  throw new Error('No se encontró navegador ni deck.json para exportar a PDF.');
 }
 
 // ============================================================================
@@ -437,12 +494,17 @@ export async function exportPureNodePDF(deck, baseDir, pdfFile) {
     const hasSideImg = imMeta && ['concept', 'example', 'video', 'section', 'cover', 'question'].includes(s.layout);
     if (hasSideImg) {
       pageImages.add(imMeta);
-      const ix = 900,
-        iyTop = 95,
-        iw = 450,
-        ih = 600;
-      const iy = H - iyTop - ih;
-      ops.push('q', `${iw} 0 0 ${ih} ${ix} ${iy} cm`, `${imMeta.name} Do`, 'Q');
+      const boxX = 890,
+        boxYTop = 105,
+        boxW = 460,
+        boxH = 560;
+      const scale = Math.min(boxW / (imMeta.w || 1024), boxH / (imMeta.h || 1024));
+      const drawW = (imMeta.w || 1024) * scale;
+      const drawH = (imMeta.h || 1024) * scale;
+      const ix = boxX + (boxW - drawW) / 2;
+      const iyTop = boxYTop + (boxH - drawH) / 2;
+      const iy = H - iyTop - drawH;
+      ops.push('q', `${drawW.toFixed(1)} 0 0 ${drawH.toFixed(1)} ${ix.toFixed(1)} ${iy.toFixed(1)} cm`, `${imMeta.name} Do`, 'Q');
     }
 
     const contentMaxChars = hasSideImg ? 54 : 88;

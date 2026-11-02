@@ -91,6 +91,16 @@ export function lintDeck(deck) {
     if (s.layout === 'video' && (s.bullets?.length || 0) > 0) {
       add(i, 'error', 'En diapositivas "video" no pongas "bullets" previos ni tareas antes del vídeo; deja "bullets" vacío para que al pulsar Espacio se reproduzca directamente el vídeo.');
     }
+    if (s.layout === 'video') {
+      const vidText = `${s.body || ''} ${s.callout || ''} ${s.notes || ''}`;
+      if (/(mientras\s+(vemos|miramos|escuchamos)|despu[eé]s\s+del\s+v[ií]deo|anota(d|r)?\s+en|identifica(d|r)?\s+(dos|tres)|en\s+parejas|en\s+grupo)/i.test(vidText)) {
+        add(i, 'error', 'En diapositivas "video" no encargues tareas ni explicaciones previas al vídeo ("mientras vemos", "anota", "identifica", "en grupo"); pon solo 1 frase de contexto.');
+      }
+    }
+    const allSlideText = `${s.title || ''} ${s.body || ''} ${(s.bullets || []).join(' ')} ${s.callout || ''}`;
+    if (/(en\s+parejas|en\s+grupos?\s+de|divid[ií]os\s+en|actividad\s+en\s+grupo)/i.test(allSlideText)) {
+      add(i, 'warn', 'La diapositiva propone una dinámica o actividad grupal ("en parejas/grupo"); asegúrate de que esté literalmente en el temario y no sea inventada.');
+    }
     if (['comparison', 'process', 'agenda', 'summary'].includes(s.layout) && s.callout) {
       add(i, 'warn', `El layout "${s.layout}" no muestra "callout" en pantalla; elimínalo para no desfasar "beat_notes".`);
     }

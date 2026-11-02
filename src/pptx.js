@@ -135,6 +135,45 @@ function resolveImg(outDir, rel) {
   return existsSync(p) ? p : null;
 }
 
+function formatSpeakerNotes(s) {
+  const parts = [];
+  if (s.notes && String(s.notes).trim()) {
+    parts.push(String(s.notes).trim());
+  }
+  if (Array.isArray(s.beat_notes) && s.beat_notes.length > 0) {
+    s.beat_notes.forEach((bn, idx) => {
+      if (bn && String(bn).trim()) {
+        parts.push(`[Pulso ${idx + 1}] ${String(bn).trim()}`);
+      }
+    });
+  }
+  return parts.join('\n\n');
+}
+
+function getImgDimensions(buf) {
+  if (!buf || buf.length < 24) return { w: 1024, h: 1024 };
+  if (buf.readUInt32BE(0) === 0x89504e47) {
+    return { w: buf.readUInt32BE(16) || 1024, h: buf.readUInt32BE(20) || 1024 };
+  }
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i < buf.length - 8) {
+      if (buf[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const marker = buf[i + 1];
+      if (marker >= 0xc0 && marker <= 0xc3) {
+        return { h: buf.readUInt16BE(i + 5) || 1024, w: buf.readUInt16BE(i + 7) || 1024 };
+      }
+      const len = buf.readUInt16BE(i + 2);
+      if (len < 2) break;
+      i += 2 + len;
+    }
+  }
+  return { w: 1024, h: 1024 };
+}
+
 export async function exportPPTX(deck, outDir, pptxFile) {
   const PptxGenJS = await loadPptxGen();
   if (!PptxGenJS) {
@@ -153,7 +192,8 @@ export async function exportPPTX(deck, outDir, pptxFile) {
     if (s.layout === 'section') sectionNum++;
     const slide = pptx.addSlide();
     slide.background = { color: t.bg };
-    if (s.notes) slide.addNotes(s.notes);
+    const fullNotes = formatSpeakerNotes(s);
+    if (fullNotes) slide.addNotes(fullNotes);
 
     const imgPath = resolveImg(outDir, s.image);
 
@@ -807,8 +847,10 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
   <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
   <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/notesMasters/notesMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"/>
   <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
   ${slides.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('\n  ')}
+  ${slides.map((_, i) => `<Override PartName="/ppt/notesSlides/notesSlide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`).join('\n  ')}
 </Types>`,
   });
 
@@ -825,6 +867,7 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
     data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rIdMaster"/></p:sldMasterIdLst>
+  <p:notesMasterIdLst><p:notesMasterId r:id="rIdNotesMaster"/></p:notesMasterIdLst>
   <p:sldIdLst>
     ${slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rIdSlide${i + 1}"/>`).join('\n    ')}
   </p:sldIdLst>
@@ -838,8 +881,26 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
     data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rIdMaster" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+  <Relationship Id="rIdNotesMaster" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="notesMasters/notesMaster1.xml"/>
   <Relationship Id="rIdTheme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
   ${slides.map((_, i) => `<Relationship Id="rIdSlide${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`).join('\n  ')}
+</Relationships>`,
+  });
+
+  entries.push({
+    name: 'ppt/notesMasters/notesMaster1.xml',
+    data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:notesMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+</p:notesMaster>`,
+  });
+
+  entries.push({
+    name: 'ppt/notesMasters/_rels/notesMaster1.xml.rels',
+    data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
 </Relationships>`,
   });
 
@@ -914,11 +975,22 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
       try {
         const ext = path.extname(imgAbs).toLowerCase() === '.png' ? 'png' : 'jpg';
         const mediaName = `image${i + 1}.${ext}`;
-        entries.push({ name: `ppt/media/${mediaName}`, data: readFileSync(imgAbs) });
+        const imgBuf = readFileSync(imgAbs);
+        const dims = getImgDimensions(imgBuf);
+        entries.push({ name: `ppt/media/${mediaName}`, data: imgBuf });
         rels.push(
           `<Relationship Id="rIdImg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaName}"/>`
         );
-        shapes.push(pptxPic({ id: nextId++, rId: 'rIdImg', x: 7.9, y: 0.9, w: 4.6, h: 5.5 }));
+        const boxX = 7.85,
+          boxY = 0.95,
+          boxW = 4.65,
+          boxH = 5.4;
+        const scale = Math.min(boxW / dims.w, boxH / dims.h);
+        const drawW = dims.w * scale;
+        const drawH = dims.h * scale;
+        const ix = boxX + (boxW - drawW) / 2;
+        const iy = boxY + (boxH - drawH) / 2;
+        shapes.push(pptxPic({ id: nextId++, rId: 'rIdImg', x: ix, y: iy, w: drawW, h: drawH }));
         hasSideImg = true;
       } catch {}
     }
@@ -1066,6 +1138,10 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
       })
     );
 
+    rels.push(
+      `<Relationship Id="rIdNotes" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${i + 1}.xml"/>`
+    );
+
     entries.push({
       name: `ppt/slides/slide${i + 1}.xml`,
       data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1086,6 +1162,41 @@ export async function exportPureNodePPTX(deck, outDir, pptxFile) {
       data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   ${rels.join('\n  ')}
+</Relationships>`,
+    });
+
+    const fullNotes = formatSpeakerNotes(s);
+    const notesParas = (fullNotes || '')
+      .split('\n')
+      .map(
+        (line) => `<a:p><a:r><a:rPr lang="es-ES" sz="1200" dirty="0"/><a:t>${xmlEsc(line)}</a:t></a:r></a:p>`
+      )
+      .join('');
+
+    entries.push({
+      name: `ppt/notesSlides/notesSlide${i + 1}.xml`,
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Notes Placeholder"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+        <p:spPr/>
+        <p:txBody><a:bodyPr/><a:lstStyle/>${notesParas}</p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:notes>`,
+    });
+
+    entries.push({
+      name: `ppt/notesSlides/_rels/notesSlide${i + 1}.xml.rels`,
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster" Target="../notesMasters/notesMaster1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide${i + 1}.xml"/>
 </Relationships>`,
     });
   });
