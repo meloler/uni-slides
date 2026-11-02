@@ -18,6 +18,50 @@ La herramienta está instalada en `$UNI_SLIDES_HOME` (por defecto `~/uni-slides`
 
 ---
 
+## 0. Fase 0: Briefing interactivo previo (¡OBLIGATORIO antes de generar!)
+
+Cuando el usuario te pida crear una presentación (p. ej. *"hazme una presentación de este PDF"* o *"prepara la clase de..."*) y **no te haya especificado aún los detalles de diseño**, **NO empieces a generar el `deck.json` a ciegas**.
+
+Primero analiza muy brevemente de qué trata el documento/tema (1 línea) y hazle **en un único mensaje claro y directo** este cuestionario de 6 puntos con opciones rápidas (para que pueda responder en segundos tipo *"1B, 2A, 3A, 4A, 5A, 6A"* o *"todo por defecto salvo..."*):
+
+> 📋 **Plantilla de preguntas que debes hacer al usuario antes de empezar:**
+>
+> Antes de diseñar y compilar la presentación sobre **[Título/Tema detectado]**, dime cómo prefieres configurarla (puedes responder con las letras, ej. `1B, 2A...`, o decirme *"por defecto"*):
+>
+> 1. **📏 Extensión de la presentación:**
+>    - **A)** Compacta / Ejecutiva (~15–22 diapositivas, solo conceptos esenciales).
+>    - **B) ⭐ Estándar de clase (~25–34 diapositivas, ritmo natural según lo que pida el temario).**
+>    - **C)** Extensa / Paso a paso (~35–42 diapositivas, desglosando cada tabla y caso al máximo).
+>
+> 2. **🎓 Nivel de profundidad y tono en las tarjetas:**
+>    - **A) ⭐ Universitario divulgativo (riguroso pero muy claro, con metáforas cotidianas y casos reales cercanos).**
+>    - **B)** Introductorio / Sencillo (lenguaje llano, cero tecnicismos complejos, ideal para primer contacto).
+>    - **C)** Técnico / Avanzado (precisión normativa/técnica alta, definiciones más densas).
+>
+> 3. **🎙️ Estilo y longitud de las Notas de Orador (`notes` y `beat_notes`):**
+>    - **A) ⭐ Guion conversacional desarrollado (2–3 frases naturales por pulso, con ejemplos hablados «...» listos para decir en clase y explicar lo que ven en pantalla con otras palabras).**
+>    - **B)** Guion corto / Telegráfico (1 frase directa por pulso, solo la idea clave y el gancho para no leer tanto).
+>    - **C)** Guion magistral amplio (explicación profunda en cada pulso + preguntas retóricas para lanzar a los alumnos).
+>
+> 4. **🎨 Tema visual y efecto de transición:**
+>    - **A) ⭐ `aurora` (Oscuro premium azul noche, violeta y coral) + transición `cinematic`.**
+>    - **B)** `neon` (Oscuro ciber/tech negro, verde eléctrico y cian) + transición `cube` (3D) o `glide`.
+>    - **C)** `paper` (Editorial claro crema, terracota y azul marino, ideal para proyectores con mucha luz) + transición `glide`.
+>
+> 5. **🖼️ Estilo de las imágenes y recursos visuales:**
+>    - **A) ⭐ Ilustración 3D editorial metafórica (estilo abstracto limpio, sin iconos literales ni texto) + esquemas Mermaid.**
+>    - **B)** Fotografía cinematográfica 35mm (realista, luz dramática documental).
+>    - **C)** Infografía isométrica 3D / Tech (paneles de cristal, diagramas técnicos 3D).
+>    - **D)** Ligero / Rápido (solo 4–6 imágenes en diapositivas clave + láminas vectoriales 3D instantáneas en el resto).
+>
+> 6. **🎬 Vídeos y dinámicas:**
+>    - **A) ⭐ Incluir 1–2 vídeos de YouTube reales de contexto (reproducción directa sin tareas inventadas) + pausas de reflexión del temario con su solución en la diapo siguiente.**
+>    - **B)** Sin vídeos de YouTube (100 % diapositivas y esquemas).
+
+*(Nota: Si el usuario ya indicó todas sus preferencias en el primer mensaje o dice "hazlo directamente con lo habitual", aplica las opciones marcadas con ⭐ y pasa directamente al diseño).*
+
+---
+
 ## 1. Filosofía del «Modo Profesor Guiado» (¡Fundamental!)
 
 El profesor a veces imparte temas que no domina al 100%, no siempre puede ver las notas de orador en el proyector del aula y suele avanzar rápido (~1 min por diapositiva). Por tanto:
@@ -174,11 +218,13 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 
 ## 6. Flujo paso a paso OBLIGATORIO para el agente
 
-Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta de forma 100% autónoma este flujo:
+Cuando el usuario te pida *"hazme una presentación de esto"*, ejecuta este flujo:
+
+0. **Haz el Briefing Interactivo (Fase 0)**:
+   - Si el usuario no ha indicado extensión, nivel, longitud de notas de orador, tema visual e imágenes, **hazle primero las 6 preguntas de la Fase 0** y espera su respuesta antes de escribir `deck.json`.
 
 1. **Diseña pedagógicamente y escribe `$UNI_SLIDES_HOME/out/<slug>/deck.json`**:
-   - Analiza el temario, define los bloques y redacta las diapositivas (`concept`, `comparison`, `process`, `diagram`, `big-number`, etc.).
-   - Define el `image_style` general del tema y añade `image_prompt` en inglés en las **4 a 8 diapositivas clave** (o diagramas `mermaid` en las de arquitectura/flujo).
+   - Ajusta el número de diapositivas, el tono, la longitud de `notes` / `beat_notes`, el `"theme"`, `"transition"` y `"image_style"` exactamente a lo que haya elegido el usuario (guardando también `"preferences": { "min_slides": ..., "max_slides": ... }` en la raíz de `deck.json`).
    - Redacta las notas de orador (`notes` y `beat_notes`) 100% alineadas 1 a 1 con la pantalla.
 
 2. **Valida la estructura con `lint` (rápido y gratuito)**:
