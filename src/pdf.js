@@ -197,7 +197,7 @@ export async function exportPDF(htmlFile, pdfFile, { screenshotsDir = null, deck
               el.style.filter = 'none';
             });
           }, k - 1);
-          await page.waitForTimeout(80);
+          await page.waitForTimeout(1600);
           if (screenshotsDir) {
             await page.screenshot({ path: `${screenshotsDir}/slide-${String(k).padStart(2, '0')}.png` });
           }
