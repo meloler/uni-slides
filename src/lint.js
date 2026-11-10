@@ -32,14 +32,14 @@ export function lintDeck(deck) {
   const add = (i, level, msg) => issues.push({ slide: i + 1, level, msg });
   const slides = deck.slides || [];
 
-  const minSlides = deck.preferences?.min_slides || 10;
-  const maxSlides = deck.preferences?.max_slides || 42;
+  const minSlides = deck.preferences?.min_slides || 5;
+  const maxSlides = deck.preferences?.max_slides || 50;
   if (slides.length < minSlides) add(-1, 'error', `Solo hay ${slides.length} diapositivas; mínimo ${minSlides}.`);
   if (slides.length > maxSlides) add(-1, 'warn', `Hay ${slides.length} diapositivas; procura no pasar de ${maxSlides} según la extensión acordada.`);
   if (slides[0]?.layout !== 'cover') add(0, 'warn', 'La primera diapositiva debería ser "cover".');
   if (!slides.slice(0, 3).some((s) => s.layout === 'question'))
     add(1, 'error', 'Falta la GRAN PREGUNTA ("question") al principio.');
-  if (!slides.some((s) => s.layout === 'agenda')) add(2, 'warn', 'Falta la diapositiva "agenda" (mapa de subpreguntas).');
+  if (slides.length >= 15 && !slides.some((s) => s.layout === 'agenda')) add(2, 'warn', 'Falta la diapositiva "agenda" (mapa de subpreguntas).');
   if (!slides.slice(-4).some((s) => s.layout === 'summary'))
     add(slides.length - 1, 'error', 'Falta "summary" al final que responda la gran pregunta.');
 

@@ -67,14 +67,27 @@ const R = {
   concept: (s, d, i) => split(s, d, i),
   example: (s, d, i) => split({ ...s, kicker: s.kicker || 'Caso real' }, d, i),
 
-  'big-number': (s) => `
+  'big-number': (s) => {
+    const rawVal = String(s.big_number || '');
+    const isFormula = /[=÷×+\-*/]/.test(rawVal) && rawVal.length > 12;
+    let numClass = 'num-huge';
+    if (rawVal.length > 22 || isFormula) numClass = 'num-formula';
+    else if (rawVal.length > 12) numClass = 'num-mid';
+    else if (rawVal.length > 6) numClass = 'num-compact';
+
+    const numHtml = isFormula
+      ? `<div class="formula-pill anim"><span class="grad-text">${esc(s.big_number)}</span></div>`
+      : `<div class="num grad-text anim count-up ${numClass}" data-val="${esc(s.big_number)}">${esc(s.big_number)}</div>`;
+
+    return `
     ${s.image || s.image_prompt ? bgImage(s) : ''}
     ${kicker({ kicker: s.kicker || 'Dato clave' })}
-    <div class="num grad-text anim count-up" data-val="${esc(s.big_number)}">${esc(s.big_number)}</div>
+    ${numHtml}
     <div class="label anim">${md(s.big_number_label || s.title)}</div>
     ${s.big_number_label && s.title
       ? `<p class="body anim"><span style="color:var(--fg);font-weight:700">${md(s.title)}.</span> ${md(s.body || '')}</p>`
-      : body(s)}`,
+      : body(s)}`;
+  },
 
   comparison: (s) => `
     ${kicker(s)}
@@ -121,15 +134,18 @@ const R = {
         .join('')}
     </div>`,
 
-  quiz: (s) => `
+  quiz: (s) => {
+    const isMulti = (s.questions || []).length >= 3;
+    return `
     ${kicker({ kicker: s.kicker || 'Repaso' })}
     <h2 class="anim">${md(s.title)}</h2>
-    <div class="qs">
+    <div class="qs ${isMulti ? 'qs-grid' : ''}">
       ${s.questions
         .map((q, i) => `<div class="card q beat anim a${Math.min(5, i + 2)}"><div class="num grad-text">${i + 1}</div><p>${md(q)}</p></div>`)
         .join('')}
     </div>
-    ${callout(s)}`,
+    ${callout(s)}`;
+  },
 
   video: (s) => {
     const url = s.video_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(s.video_query || s.title)}`;
@@ -707,14 +723,18 @@ const RUNTIME = String.raw`
       const mini = document.getElementById('pr-mini-stage');
       if (mini) {
         const r = mini.getBoundingClientRect();
-        const s = Math.min(r.width / 1920, r.height / 1080);
-        deck.style.transform = 'scale(' + s + ')';
+        if (r.width > 0 && r.height > 0) {
+          const s = Math.min(r.width / 1920, r.height / 1080);
+          deck.style.transform = 'scale(' + s + ')';
+        }
       }
       const nextStage = document.getElementById('pr-next-stage');
       if (nextStage && nextDeck) {
         const r2 = nextStage.getBoundingClientRect();
-        const s2 = Math.min(r2.width / 1920, r2.height / 1080);
-        nextDeck.style.transform = 'scale(' + s2 + ')';
+        if (r2.width > 0 && r2.height > 0) {
+          const s2 = Math.min(r2.width / 1920, r2.height / 1080);
+          nextDeck.style.transform = 'scale(' + s2 + ')';
+        }
       }
       return;
     }
@@ -909,7 +929,7 @@ const RUNTIME = String.raw`
     const css = getComputedStyle(document.documentElement);
     const v = (n) => css.getPropertyValue(n).trim();
     mermaid.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'loose',
-      flowchart: { htmlLabels: true, curve: 'basis', padding: 20, wrappingWidth: 210, nodeSpacing: 45, rankSpacing: 60 },
+      flowchart: { htmlLabels: true, curve: 'basis', padding: 18, wrappingWidth: 260, nodeSpacing: 35, rankSpacing: 50 },
       themeVariables: { fontFamily: v('--font-body'), fontSize: '22px', primaryColor: v('--mermaid-node'),
         primaryTextColor: v('--mermaid-text'), primaryBorderColor: v('--accent'), lineColor: v('--mermaid-line'),
         secondaryColor: v('--bg-2'), tertiaryColor: v('--bg-2'), mainBkg: v('--mermaid-node'), textColor: v('--mermaid-text'),
@@ -931,6 +951,12 @@ const RUNTIME = String.raw`
       nextStageInner.appendChild(nextDeck);
       nextStage.appendChild(nextStageInner);
       nextSlides = [...nextDeck.querySelectorAll('.slide')];
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => fit());
+        const m1 = document.getElementById('pr-mini-stage');
+        if (m1) ro.observe(m1);
+        ro.observe(nextStage);
+      }
       fit();
       updatePresenterUI();
     }
@@ -1043,12 +1069,14 @@ export async function renderStandaloneHTML(htmlFile, standaloneFile) {
     html = html.split(`'${rel}'`).join(`'${dataUrl}'`).split(`"${rel}"`).join(`"${dataUrl}"`);
   }
 
-  // Si usa mermaid externo local, incrustarlo inline también
+  // Si usa mermaid externo local, incrustarlo inline también de forma segura
   if (html.includes('<script src="assets/mermaid.min.js"></script>')) {
     const mPath = path.join(baseDir, 'assets', 'mermaid.min.js');
     if (existsSync(mPath)) {
       const mCode = await readFile(mPath, 'utf8');
-      html = html.replace('<script src="assets/mermaid.min.js"></script>', `<script>${mCode}</script>`);
+      const safeCode = mCode.replace(/<\/script/gi, '<\\/script');
+      // Usar función de sustitución para evitar interpretar $&, $', etc. en mCode
+      html = html.replace('<script src="assets/mermaid.min.js"></script>', () => `<script>${safeCode}</script>`);
     }
   }
 

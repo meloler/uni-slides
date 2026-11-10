@@ -94,6 +94,7 @@ export function normalizeDeck(deck) {
     hook: deck.hook || '',
     theme: deck.theme || 'aurora',
     image_style: deck.image_style || '',
+    preferences: deck.preferences || null,
     slides: [],
   };
   let side = 'right';

@@ -1,6 +1,6 @@
 ---
 name: uni-slides
-description: "Diseña y genera presentaciones de clase visuales (estilo Gamma) en Web, PDF y Google Slides (.pptx) en Modo Profesor Guiado (con el número de diapositivas que el tema requiera sin pasar de ~40, tarjetas Concepto + Mini-explicación y notas de orador 100% alineadas pulso a pulso con lo que se ve en pantalla). El propio agente escribe deck.json y usa la CLI para validar y compilar."
+description: "Diseña y genera presentaciones de clase visuales (estilo Gamma) en Web, PDF y Google Slides (.pptx) en Modo Profesor Guiado (con el número de diapositivas 100% libre y natural según lo que pida el temario —sean 10, 18, 25, 29, 34 o 40—, tarjetas Concepto + Mini-explicación y notas de orador habladas 100% alineadas pulso a pulso con lo que se ve en pantalla). El propio agente escribe deck.json y usa la CLI para validar y compilar."
 metadata:
   openclaw:
     emoji: "🎓"
@@ -28,10 +28,11 @@ Primero analiza muy brevemente de qué trata el documento/tema (1 línea) y hazl
 >
 > Antes de diseñar y compilar la presentación sobre **[Título/Tema detectado]**, dime cómo prefieres configurarla (puedes responder con las letras, ej. `1B, 2A...`, o decirme *"por defecto"*):
 >
-> 1. **📏 Extensión de la presentación:**
->    - **A)** Compacta / Ejecutiva (~15–22 diapositivas, solo conceptos esenciales).
->    - **B) ⭐ Estándar de clase (~25–34 diapositivas, ritmo natural según lo que pida el temario).**
->    - **C)** Extensa / Paso a paso (~35–42 diapositivas, desglosando cada tabla y caso al máximo).
+> 1. **📏 Extensión de la presentación (sin número obligado, 100% según el temario):**
+>    - **A)** Píldora / Corta (~10–18 diapositivas, solo ideas maestras).
+>    - **B) ⭐ Estándar de clase (~20–30 diapositivas, ritmo cómodo de 50-60 min).**
+>    - **C)** Extensa / Detallada (~32–42 diapositivas, desglosando cada tabla y caso al máximo).
+>    - **D)** Las que tú veas convenientes según el temario (sin forzar ninguna cifra prefijada).
 >
 > 2. **🎓 Nivel de profundidad y tono en las tarjetas:**
 >    - **A) ⭐ Universitario divulgativo (riguroso pero muy claro, con metáforas cotidianas y casos reales cercanos).**
@@ -66,9 +67,10 @@ Primero analiza muy brevemente de qué trata el documento/tema (1 línea) y hazl
 
 El profesor a veces imparte temas que no domina al 100%, no siempre puede ver las notas de orador en el proyector del aula y suele avanzar rápido (~1 min por diapositiva). Por tanto:
 
-1. **Número natural de diapositivas según el temario (normalmente 20–34, máximo ~40):**
-   - **No rellenes por rellenar ni fuerces 42 diapositivas si el tema no lo pide.** Crea las diapositivas que el temario requiera de forma natural (suele estar entre 20 y 34 diapositivas, sin pasarte de 40).
-   - Si el temario trae una tabla importante (p. ej. 4 situaciones, 5 licencias Creative Commons o varios formatos), dale espacio para que se lea con claridad, pero **mantente 100% fiel al temario** sin inventar tareas ni bloques artificiales.
+1. **CERO OBLIGACIÓN DE 40 DIAPOSITIVAS — Número 100% natural según el temario:**
+   - **PROHIBIDO forzar o inflar diapositivas para alcanzar una cifra prefijada.** Una clase excelente puede tener 10, 14, 22, 29, 34 o 40 diapositivas.
+   - Si el temario se cubre con rigor, solidez y buen ritmo en 18 o 29 diapositivas, **ese es el número perfecto**. Rellenar con diapositivas vacías solo para "llegar a 40" arruina la clase y aburre a los alumnos.
+   - Configura en la raíz de `deck.json`: `"preferences": { "min_slides": 5, "max_slides": 50 }` (o la cifra que requiera el tema).
 2. **Tarjetas `Concepto + Mini-explicación` en pantalla:**
    - Nunca pongas bullets crípticos de 3 palabras (`"Portal ≠ recurso"`).
    - Cada bullet debe tener entre **12 y 24 palabras** con la estructura:
@@ -95,9 +97,44 @@ El profesor a veces imparte temas que no domina al 100%, no siempre puede ver la
 
 ---
 
-## 2. Cómo redactar las Notas de Orador (`notes` y `beat_notes`): ¡Sencillas, Habladas y Sin Confusión!
+## 2. La Fórmula Maestra de las Notas de Orador (`notes` y `beat_notes`): El Estándar Antigravity
 
-El mayor fallo al generar notas es redactar resúmenes teóricos o planes docentes en lugar de lo que el profesor tiene que decir.
+El mayor fallo al generar notas es redactar resúmenes teóricos, texto telegráfico o planes docentes en lugar de lo que el profesor tiene que **decir en voz alta en clase**.
+Aquí tienes la arquitectura exacta que hace que la clase suene vibrante, natural y profesional:
+
+### 🎙️ La arquitectura en dos niveles:
+
+1. **`notes` — El gancho oral de entrada (antes del primer clic):**
+   - Es lo primero que dice el profesor nada más pasar a la diapositiva, antes de pulsar la barra espaciadora.
+   - **Objetivo:** Conectar con lo anterior, hacer una pregunta retórica o avisar de la importancia del punto.
+   - **Fórmula:** Siempre entre comillas latinas `«...»`. 1 a 2 frases enérgicas.
+   - *Ejemplo:* `«Fijaos bien en esta pantalla, porque aquí es donde caen el 90 % de los profesionales cuando empiezan en una agencia...»` o `«¿Por qué casi todo el mundo confunde estos dos términos? Vamos a verlo con un caso real.»`
+
+2. **`beat_notes` — El guion hablado sincronizado paso a paso (con la barra espaciadora):**
+   - Un array de strings donde cada elemento `[0, 1, 2...]` se corresponde exactamente 1 a 1 con la tarjeta/bullet que se ilumina en pantalla.
+   - **PROHIBIDO LEER LA PANTALLA:** Los alumnos ya saben leer el texto breve en el proyector. La nota oral debe **expandir, explicar y traducir**.
+   - **La fórmula de 3 partes para cada pulso:**
+     1. **Llamada de atención:** `«Mirad el primer punto...»`, `«¿Qué significa esto en la práctica?»` o `«Ojo a la diferencia...»`.
+     2. **Traducción coloquial con metáfora cotidiana:** Explica la norma o la técnica con algo que un alumno de 20 años viva todos los días (el menú del bar, el grupo de WhatsApp, el caso de Ibai Llanos, Duolingo, pedir un café, el algoritmo de TikTok, una simple resta).
+     3. **Consejo profesional o advertencia de examen:** `«Esto os lo van a preguntar en la entrevista»`, `«Si un cliente os pide esto, respondedle inmediatamente que no...»`.
+   - **Estilo lingüístico:**
+     - Siempre en primera persona y dirigiéndose al aula: *«fijaos»*, *«imaginad»*, *«mucho cuidado con esto»*, *«¿veis lo que pasa?»*.
+     - Frases con cadencia oral natural, pausas e ironía pedagógica.
+     - **CERO metalenguaje:** PROHIBIDO escribir *"En esta diapositiva el profesor explicará...", "Quiero que los alumnos entiendan...", "Con este punto busco..."*. Escribe directamente las palabras exactas que van a salir de la boca del profesor.
+
+### 📋 Guía rápida de redacción por tipo de layout:
+
+- **`concept` / `example` (2-3 bullets + callout):**
+  - `notes`: El dilema o caso que abre el debate.
+  - `beat_notes[0..N-1]`: La explicación hablada de cada tarjeta con ejemplos del mundo real.
+  - `beat_notes[último]` (si hay callout): La moraleja de oro o la regla definitiva para llevarse a casa.
+- **`comparison` (Columna A vs Columna B):**
+  - Orden estricto: primero los bullets de la columna izquierda (el mito, el error o la opción A) y luego los de la columna derecha (la realidad, la solución o la opción B).
+  - En la voz: contrastar con fuerza: `«Esto es lo que cree todo el mundo... pero mirad ahora la realidad en la columna derecha...»`.
+- **`process` / `agenda` (Pasos secuenciales):**
+  - Cada pulso es un hito: `«Paso uno: lo primero que hacéis al llegar al despacho no es abrir Excel...»`.
+- **`quiz` (Pregunta en clase):**
+  - La nota del profesor debe darle pautas para provocar el debate: `«A ver, lanzaos a la piscina: ¿quién cree que la opción A es legal? Levantad la mano... Bien, ahora mirad por qué no.»`.
 
 ### 🚫 Anti-patrones que DEBES EVITAR:
 1. **❌ Prohibido el meta-lenguaje docente:**
@@ -208,9 +245,11 @@ Si el entorno de OpenClaw tiene un proxy de red que bloquea la conexión externa
 - **Bullets:** Máximo **3 bullets** por diapositiva (4 en `summary`), de **12 a 26 palabras** cada uno, empezando por `**Concepto en negrita**: explicación...`.
 - **Palabras por diapositiva:** Máximo **95 palabras** entre `body`, `bullets` y `callout`.
 - **Variedad visual:** No repitas el mismo `layout` más de **2 veces seguidas**.
-- **Imágenes y esquemas (`image_prompt` / `mermaid`):**
-  - Pon `image_prompt` únicamente en las **4 a 8 diapositivas más importantes** (portada `cover`, gran pregunta `question`, y los 3-5 casos o metáforas centrales) para evitar bloqueos por límite de llamadas de tu herramienta nativa de imágenes.
-  - En las demás diapositivas `concept` o `example`, usa un diagrama `mermaid` o déjalas sin `image_prompt`: el motor de `uni-slides` generará automáticamente una **lámina infográfica 3D editorial** con los conceptos clave de la diapositiva (nunca quedará un hueco vacío).
+- **Imágenes y esquemas (`image_prompt` / `mermaid`) — Criterio de valor:**
+  - **No poner por poner, pero nunca dejar a cero:** Selecciona intencionalmente entre **5 y 8 diapositivas clave** donde una ilustración realmente sume valor pedagógico (portada `cover`, la gran pregunta `question`, metáforas centrales y casos reales de empresas o situaciones concretas).
+  - Cada `image_prompt` debe ser conceptual, elegante y libre de texto (`no text, clean composition`).
+  - En las diapositivas puramente lógicas o de flujo, usa un diagrama `mermaid` o la lámina infográfica editorial.
+  - Al compilar, **siempre compila con las imágenes activadas** (`compile ... --pdf --pptx` sin `--no-images`) para que el resultado final entregado al profesor siempre cuente con ese apoyo visual de impacto.
 - **Notas de orador (`notes`):** Obligatorias en todas las diapositivas. Guion hablado directo para el profesor («...»), sin meta-lenguaje tipo "Voy a provocar una respuesta...".
 - **Pulsos (`beat_notes`):** Obligatorio si la diapositiva tiene varios puntos. Array de strings con el guion hablado para cada pulso al pulsar la barra espaciadora (debe coincidir exactamente 1 a 1 con el número de elementos `.beat` de la diapositiva).
 

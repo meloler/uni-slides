@@ -168,13 +168,42 @@ export async function exportPDF(htmlFile, pdfFile, { screenshotsDir = null, deck
       await page.goto(pathToFileURL(htmlFile).href, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForFunction(() => window.__ready === true, null, { timeout: 15000 }).catch(() => {});
 
+      // Desactivar radicalmente cualquier transición, animación y filtro de desenfoque (blur) para que cada diapositiva se capture 100% nítida e instantánea
+      await page.addStyleTag({
+        content: `
+          *, *::before, *::after {
+            transition: none !important;
+            animation: none !important;
+            filter: none !important;
+          }
+          .deck .slide {
+            transition: none !important;
+            animation: none !important;
+            filter: none !important;
+            transform: none !important;
+            clip-path: none !important;
+          }
+          .deck .slide.active {
+            opacity: 1 !important;
+            visibility: visible !important;
+            filter: none !important;
+            transform: none !important;
+          }
+          .anim, .beat {
+            opacity: 1 !important;
+            transform: none !important;
+            filter: none !important;
+            animation: none !important;
+          }
+          .hud, .progress, .notes-panel, #overview, #laser, #video-modal {
+            display: none !important;
+          }
+        `,
+      });
+
       await page.evaluate(() => {
         document.body.classList.remove('beat-mode');
         document.body.setAttribute('data-transition', 'none');
-        const h = document.querySelector('.hud');
-        if (h) h.style.display = 'none';
-        const p = document.querySelector('.progress');
-        if (p) p.style.display = 'none';
         document.querySelectorAll('.beat').forEach((el) => {
           el.classList.add('shown', 'current');
           el.style.opacity = '1';
@@ -197,11 +226,11 @@ export async function exportPDF(htmlFile, pdfFile, { screenshotsDir = null, deck
               el.style.filter = 'none';
             });
           }, k - 1);
-          await page.waitForTimeout(1600);
+          await page.waitForTimeout(100);
           if (screenshotsDir) {
             await page.screenshot({ path: `${screenshotsDir}/slide-${String(k).padStart(2, '0')}.png` });
           }
-          const jpg = await page.screenshot({ type: 'jpeg', quality: 90 });
+          const jpg = await page.screenshot({ type: 'jpeg', quality: 95 });
           jpegBuffers.push(jpg);
         }
         await buildJpegSlidesPDF(jpegBuffers, pdfFile);
