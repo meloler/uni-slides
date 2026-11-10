@@ -540,10 +540,16 @@ const RUNTIME = String.raw`
   // Las ediciones pertenecen a esta presentación y a cada pulso, no al proyector.
   const noteStoragePrefix = 'uni_slides_notes_v1:' + location.pathname + ':' + document.title + ':';
   const noteKey = (slide, beat) => noteStoragePrefix + slide + ':' + beat;
+  const legacyNoteKey = (slide, beat) => 'uni_slides_custom_note_' + slide + '_' + beat;
   const readEditedNote = (slide, beat) => {
-    try { return localStorage.getItem(noteKey(slide, beat)); } catch { return null; }
+    try {
+      const val = localStorage.getItem(noteKey(slide, beat));
+      if (val !== null) return val;
+      return localStorage.getItem(legacyNoteKey(slide, beat));
+    } catch { return null; }
   };
   let editMode = false;
+  let lastRenderedNoteKey = '';
   // Actualiza la interfaz de la Consola del Profesor (Pantalla 1) y el panel N
   const updatePresenterUI = () => {
     const cur = getStepInfo(i, b);
@@ -557,7 +563,12 @@ const RUNTIME = String.raw`
     document.getElementById('pr-step-badge').textContent = cur.badge;
     document.getElementById('pr-now-label').textContent = cur.label;
     document.getElementById('pr-now-title').textContent = cur.title;
-    document.getElementById('pr-now-body').textContent = cur.body;
+    const bodyEl = document.getElementById('pr-now-body');
+    const currentKey = i + ':' + b;
+    if (bodyEl && (!editMode || lastRenderedNoteKey !== currentKey || document.activeElement !== bodyEl)) {
+      bodyEl.textContent = cur.body;
+      lastRenderedNoteKey = currentKey;
+    }
 
     // Puntos discretos de pulso (clicables por si quieres saltar a un pulso concreto sin ocupar espacio)
     const dotsEl = document.getElementById('pr-dots');
@@ -625,16 +636,67 @@ const RUNTIME = String.raw`
       try { localStorage.setItem(fontKey, String(fontSize)); } catch {}
     };
     setFontSize(fontSize);
-    document.getElementById('pr-font-dec').onclick = () => setFontSize(fontSize - 2);
-    document.getElementById('pr-font-inc').onclick = () => setFontSize(fontSize + 2);
+    document.getElementById('pr-font-dec').onclick = () => {
+      setFontSize(fontSize - 2);
+      if (editMode) scriptBody.focus();
+    };
+    document.getElementById('pr-font-inc').onclick = () => {
+      setFontSize(fontSize + 2);
+      if (editMode) scriptBody.focus();
+    };
     const editButton = document.getElementById('pr-edit-toggle');
-    editButton.onclick = () => {
-      editMode = !editMode;
+    const setEditMode = (nextState) => {
+      editMode = Boolean(nextState);
       scriptBody.contentEditable = editMode ? 'true' : 'false';
       scriptBody.classList.toggle('is-editing', editMode);
       editButton.textContent = editMode ? '✓ Terminar edición' : '✏️ Editar guion';
-      if (editMode) scriptBody.focus(); else scriptBody.blur();
+      if (editMode) {
+        scriptBody.focus();
+      } else {
+        scriptBody.blur();
+      }
     };
+    editButton.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setEditMode(!editMode);
+    };
+    // Aislar eventos de teclado y ratón dentro del editor de guion para no avanzar ni retroceder diapositiva
+    scriptBody.addEventListener('keydown', (e) => {
+      if (editMode || scriptBody.isContentEditable) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setEditMode(false);
+          return;
+        }
+        e.stopPropagation();
+      }
+    });
+    scriptBody.addEventListener('keyup', (e) => {
+      if (editMode || scriptBody.isContentEditable) e.stopPropagation();
+    });
+    scriptBody.addEventListener('keypress', (e) => {
+      if (editMode || scriptBody.isContentEditable) e.stopPropagation();
+    });
+    scriptBody.addEventListener('click', (e) => {
+      if (editMode || scriptBody.isContentEditable) e.stopPropagation();
+    });
+    scriptBody.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if (!editMode) setEditMode(true);
+    });
+    const nowCard = scriptBody.closest('.pr-now-card');
+    if (nowCard) {
+      nowCard.addEventListener('click', (e) => {
+        if (!editMode) return;
+        if (e.target.closest('button')) return;
+        e.stopPropagation();
+        if (e.target !== scriptBody && !scriptBody.contains(e.target)) {
+          scriptBody.focus();
+        }
+      });
+    }
     document.getElementById('pr-save-html').onclick = () => {
       try {
         const snapshot = new DOMParser().parseFromString(originalDocument, 'text/html');
@@ -670,7 +732,11 @@ const RUNTIME = String.raw`
       } catch (err) { saveStatus.textContent = 'No se pudo generar el HTML'; console.error(err); }
     };
     scriptBody.addEventListener('input', () => {
-      try { localStorage.setItem(noteKey(i, b), scriptBody.innerText); saveStatus.textContent = 'Guardado en este navegador'; }
+      try {
+        localStorage.setItem(noteKey(i, b), scriptBody.innerText);
+        notes.innerHTML = '<b>[' + getStepInfo(i, b).badge + '] ' + getStepInfo(i, b).title + ':</b> ' + scriptBody.innerText.replace(/\n/g, ' ');
+        saveStatus.textContent = 'Guardado en este navegador';
+      }
       catch { saveStatus.textContent = 'No se pudo guardar'; }
     });
     setInterval(() => {
@@ -864,7 +930,18 @@ const RUNTIME = String.raw`
 
   addEventListener('resize', fit);
   addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))) return;
+    const targetEl = e.target instanceof Element ? e.target : (e.target && e.target.parentElement ? e.target.parentElement : null);
+    const activeEl = document.activeElement;
+    const inEditable = editMode
+      || Boolean(activeEl && (activeEl.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(activeEl.tagName) || activeEl.closest?.('[contenteditable="true"], .is-editing')))
+      || Boolean(targetEl && (targetEl.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(targetEl.tagName) || targetEl.closest?.('[contenteditable="true"], .is-editing')));
+    if (inEditable) {
+      if (e.key === 'Escape' && editMode) {
+        e.preventDefault();
+        document.getElementById('pr-edit-toggle')?.click();
+      }
+      return;
+    }
     if (document.body.classList.contains('show-blackout') && e.key !== 'b' && e.key !== 'B') {
       document.body.classList.remove('show-blackout');
       sendSync();
