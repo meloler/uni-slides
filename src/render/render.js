@@ -79,13 +79,14 @@ const R = {
       ? `<div class="formula-pill anim"><span class="grad-text">${esc(s.big_number)}</span></div>`
       : `<div class="num grad-text anim count-up ${numClass}" data-val="${esc(s.big_number)}">${esc(s.big_number)}</div>`;
 
+    const isAnswerCard = /respuesta\s+correcta/i.test(`${s.kicker || ''} ${s.big_number || ''}`);
     return `
     ${s.image || s.image_prompt ? bgImage(s) : ''}
     ${kicker({ kicker: s.kicker || 'Dato clave' })}
     ${numHtml}
-    <div class="label anim">${md(s.big_number_label || s.title)}</div>
-    ${s.big_number_label && s.title
-      ? `<p class="body anim"><span style="color:var(--fg);font-weight:700">${md(s.title)}.</span> ${md(s.body || '')}</p>`
+    <div class="label anim${isAnswerCard ? ' answer-card' : ''}">${md(s.big_number_label || s.title)}</div>
+    ${s.big_number_label && s.title && s.body
+      ? `<p class="body anim"><span style="color:var(--fg);font-weight:700">${md(s.title)}.</span> ${md(s.body)}</p>`
       : body(s)}`;
   },
 
@@ -136,12 +137,33 @@ const R = {
 
   quiz: (s) => {
     const isMulti = (s.questions || []).length >= 3;
+    const tLen = (s.title || '').length;
+    const titleCls = (tLen > 165 || s.body) ? 'q-title-sm' : (tLen > 95 ? 'q-title-md' : '');
+    let contextHtml = '';
+    if (s.body) {
+      const lines = String(s.body).split('\n').map((l) => l.trim()).filter(Boolean);
+      if (lines.length >= 2 && lines[0].startsWith('|')) {
+        const parseRow = (row) => row.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+        const headers = parseRow(lines[0]);
+        const dataLines = lines.slice(1).filter((l) => !/^\|?[\s:|-]+\|?$/.test(l));
+        contextHtml = `<table class="quiz-table anim"><thead><tr>${headers.map((h) => `<th>${md(h)}</th>`).join('')}</tr></thead><tbody>${dataLines.map((r) => `<tr>${parseRow(r).map((c) => `<td>${md(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      } else {
+        contextHtml = `<div class="quiz-statements anim">${lines.map((l) => `<div class="quiz-stmt">${md(l)}</div>`).join('')}</div>`;
+      }
+    }
+    const useBeats = Array.isArray(s.beat_notes) && s.beat_notes.filter((n) => String(n || '').trim()).length > 0;
     return `
     ${kicker({ kicker: s.kicker || 'Repaso' })}
-    <h2 class="anim">${md(s.title)}</h2>
+    <h2 class="anim ${titleCls}">${md(s.title)}</h2>
+    ${contextHtml}
     <div class="qs ${isMulti ? 'qs-grid' : ''}">
       ${s.questions
-        .map((q, i) => `<div class="card q beat anim a${Math.min(5, i + 2)}"><div class="num grad-text">${i + 1}</div><p>${md(q)}</p></div>`)
+        .map((q, i) => {
+          const m = /^(?:\*\*)?([A-D])[.)](?:\*\*)?\s+(.*)$/s.exec(String(q || '').trim());
+          const badge = m ? m[1] : String(i + 1);
+          const text = m ? m[2] : q;
+          return `<div class="card q ${useBeats ? 'beat ' : ''}anim a${Math.min(5, i + 2)}"><div class="num grad-text">${esc(badge)}</div><p>${md(text)}</p></div>`;
+        })
         .join('')}
     </div>
     ${callout(s)}`;

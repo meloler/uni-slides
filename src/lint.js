@@ -18,8 +18,11 @@ export function countSpokenBeats(s) {
       return s.steps?.length || 0;
     case 'summary':
       return s.bullets?.length || 0;
-    case 'quiz':
+    case 'quiz': {
+      const hasNotes = Array.isArray(s.beat_notes) && s.beat_notes.some((n) => String(n || '').trim().length > 0);
+      if (!hasNotes) return s.callout ? 1 : 0;
       return (s.questions?.length || 0) + (s.callout ? 1 : 0);
+    }
     case 'video':
       return s.callout ? 1 : 0;
     default:
