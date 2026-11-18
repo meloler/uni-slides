@@ -363,13 +363,6 @@ ${slides}
         </div>
         <div class="pr-mini-stage" id="pr-mini-stage"></div>
       </div>
-      <div class="pr-mini-wrap pr-next-wrap">
-        <div class="pr-mini-head">
-          <span class="pr-mini-label">🔜 SIGUIENTE DIAPOSITIVA</span>
-          <span class="pr-mini-sub" id="pr-next-sub"></span>
-        </div>
-        <div class="pr-mini-stage pr-next-stage" id="pr-next-stage"></div>
-      </div>
     </aside>
   </main>
 </div>
@@ -1036,29 +1029,13 @@ const RUNTIME = String.raw`
     try { await mermaid.run({ querySelector: '.mermaid' }); } catch (e) { console.error(e); }
   }
   if (isPresenter && deck) {
-    const nextStage = document.getElementById('pr-next-stage');
-    if (nextStage && !nextDeck) {
-      const nextStageInner = document.createElement('div');
-      nextStageInner.className = 'stage';
-      nextDeck = deck.cloneNode(true);
-      nextDeck.querySelectorAll('.beat, .anim').forEach((el) => {
-        el.classList.add('vis');
-        el.classList.remove('current', 'done');
-        el.style.opacity = '1';
-        el.style.transform = 'none';
-      });
-      nextStageInner.appendChild(nextDeck);
-      nextStage.appendChild(nextStageInner);
-      nextSlides = [...nextDeck.querySelectorAll('.slide')];
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => fit());
-        const m1 = document.getElementById('pr-mini-stage');
-        if (m1) ro.observe(m1);
-        ro.observe(nextStage);
-      }
-      fit();
-      updatePresenterUI();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => fit());
+      const m1 = document.getElementById('pr-mini-stage');
+      if (m1) ro.observe(m1);
     }
+    fit();
+    updatePresenterUI();
   }
   await document.fonts.ready;
   await Promise.all([...document.querySelectorAll('.img')].map((el) => new Promise((ok) => {
