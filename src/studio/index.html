@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uni-Slides Studio · Editor Visual por Bloques</title>
+<style>
+  :root {
+    --bg: #0b0e17;
+    --panel: #121726;
+    --panel-2: #181f33;
+    --border: rgba(255,255,255,.1);
+    --fg: #f1f5f9;
+    --muted: #94a3b8;
+    --accent: #f97316;
+    --accent-2: #8b5cf6;
+    --green: #10b981;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* Topbar */
+  .topbar {
+    height: 54px; flex-shrink: 0; background: #0f1320; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 14px;
+  }
+  .tb-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .logo { font-weight: 800; font-size: 14px; letter-spacing: -.02em; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .tb-select, .tb-input {
+    background: var(--panel-2); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 9px; font-size: 12px; outline: none; min-width: 0;
+  }
+  .tb-select:focus, .tb-input:focus { border-color: var(--accent); }
+  #deck-select { max-width: 200px; text-overflow: ellipsis; }
+  .tb-input.title-in { width: 175px; font-weight: 600; }
+
+  .btn {
+    background: var(--panel-2); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 11px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    transition: background .15s, border-color .15s, filter .15s;
+  }
+  .btn:hover { background: #232c47; border-color: rgba(255,255,255,.22); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
+  .btn-primary:hover { background: var(--accent); filter: brightness(1.1); }
+  .btn-accent2 { background: var(--accent-2); border-color: transparent; color: #fff; }
+  .btn-accent2:hover { background: var(--accent-2); filter: brightness(1.1); }
+  .btn-green { background: #059669; border-color: transparent; color: #fff; }
+  .btn-green:hover { background: #059669; filter: brightness(1.12); }
+  .btn-sm { padding: 4px 8px; font-size: 11.5px; }
+  .btn-danger { color: #fca5a5; }
+  .btn-danger:hover { background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.4); }
+
+  /* Workspace 3 columns */
+  .workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr) 390px; }
+
+  /* Left sidebar: Slide Navigator */
+  .left-col {
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .col-head {
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .col-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+  .slide-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .slide-item {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+    transition: border-color .15s, background .15s;
+  }
+  .slide-item:hover { border-color: rgba(255,255,255,.22); }
+  .slide-item.active { border-color: var(--accent); background: rgba(249,115,22,.12); box-shadow: inset 3px 0 0 var(--accent); }
+  .slide-item.drag-over { border-top: 2px solid var(--accent-2); }
+  .si-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .si-num { font-weight: 800; font-size: 11px; color: var(--accent); }
+  .si-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    background: rgba(255,255,255,.07); color: #cbd5e1; padding: 2px 6px; border-radius: 5px;
+  }
+  .si-title { font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .si-actions { display: flex; gap: 4px; margin-top: 2px; opacity: .75; }
+  .slide-item:hover .si-actions { opacity: 1; }
+  .si-act-btn {
+    background: rgba(255,255,255,.06); border: none; color: #cbd5e1; border-radius: 4px;
+    padding: 2px 6px; font-size: 11px; cursor: pointer;
+  }
+  .si-act-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+  /* Center: Live 16:9 Canvas */
+  .center-col {
+    display: flex; flex-direction: column; min-height: 0; min-width: 0;
+    background: radial-gradient(circle at 50% 40%, #151b2e 0%, #090c14 100%);
+  }
+  .canvas-wrap {
+    flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .stage-frame {
+    width: 100%; max-width: 100%; aspect-ratio: 16 / 9; max-height: 100%;
+    background: #000; border-radius: 12px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.14); box-shadow: 0 24px 64px rgba(0,0,0,.6);
+    position: relative;
+  }
+  .stage-frame iframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  .canvas-bar {
+    height: 44px; flex-shrink: 0; border-top: 1px solid var(--border); background: #0f1320;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+  }
+  .status-pill { font-size: 12px; color: var(--muted); }
+  .status-pill.ok { color: #34d399; }
+  .status-pill.err { color: #f87171; }
+
+  /* Right panel: Elementor-style Inspector */
+  .right-col {
+    background: var(--panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .inspector { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .sec {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .sec-title {
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--accent); display: flex; align-items: center; justify-content: space-between;
+  }
+  label.fld { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  input.ctrl, select.ctrl, textarea.ctrl {
+    width: 100%; background: #0d111d; color: var(--fg); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 9px; font-family: inherit; font-size: 12.5px; outline: none;
+  }
+  textarea.ctrl { resize: vertical; min-height: 60px; line-height: 1.4; }
+  input.ctrl:focus, select.ctrl:focus, textarea.ctrl:focus { border-color: var(--accent); }
+
+  .rep-item {
+    background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .rep-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #cbd5e1; font-weight: 700; }
+  .note-mini { border-left: 3px solid var(--accent-2) !important; background: rgba(139,92,246,.08) !important; min-height: 46px !important; font-size: 11.8px !important; }
+  .img-thumb { width: 100%; max-height: 120px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
+
+  /* Modal añadir bloque */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(5,8,15,.78); backdrop-filter: blur(6px);
+    z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal-card {
+    background: var(--panel); border: 1px solid rgba(255,255,255,.16); border-radius: 14px;
+    width: 100%; max-width: 780px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.7);
+  }
+  .modal-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-head h3 { margin: 0; font-size: 15px; }
+  .block-grid {
+    padding: 16px; overflow-y: auto; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px;
+  }
+  .block-card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; cursor: pointer; text-align: left; color: var(--fg);
+    transition: transform .12s, border-color .15s, background .15s;
+  }
+  .block-card:hover { transform: translateY(-2px); border-color: var(--accent); background: rgba(249,115,22,.1); }
+  .bc-icon { font-size: 20px; margin-bottom: 6px; }
+  .bc-name { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+  .bc-desc { font-size: 11px; color: var(--muted); line-height: 1.3; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="tb-group">
+      <div class="logo"><span class="logo-dot"></span> Uni-Slides Studio</div>
+      <select class="tb-select" id="deck-select" title="Abrir presentación existente"></select>
+      <button class="btn btn-sm" id="btn-new">+ Nueva</button>
+    </div>
+    <div class="tb-group">
+      <input class="tb-input title-in" id="deck-title" placeholder="Título de la presentación">
+      <select class="tb-select" id="deck-theme" title="Tema visual">
+        <option value="aurora">Tema: Aurora</option>
+        <option value="paper">Tema: Paper</option>
+        <option value="neon">Tema: Neon</option>
+      </select>
+      <select class="tb-select" id="deck-tr" title="Transición">
+        <option value="cinematic">Transición: Cinematic</option>
+        <option value="cube">Transición: Cubo 3D</option>
+        <option value="glide">Transición: Glide</option>
+        <option value="iris">Transición: Iris</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <button class="btn" id="btn-save">💾 Guardar</button>
+      <button class="btn btn-accent2" id="btn-presenter">🎙️ Vista Profesor</button>
+      <button class="btn btn-primary" id="btn-export-html">⬇ HTML</button>
+      <button class="btn btn-green" id="btn-export-pdf">📄 HTML + PDF</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- Columna Izquierda: Navegador de bloques -->
+    <aside class="left-col">
+      <div class="col-head">
+        <span class="col-title">Diapositivas (<span id="slide-count">0</span>)</span>
+        <button class="btn btn-primary btn-sm" id="btn-add-block">+ Bloque</button>
+      </div>
+      <div class="slide-list" id="slide-list"></div>
+    </aside>
+
+    <!-- Centro: Lienzo 16:9 en tiempo real -->
+    <main class="center-col">
+      <div class="canvas-wrap">
+        <div class="stage-frame">
+          <iframe id="preview-frame" title="Vista previa en vivo"></iframe>
+        </div>
+      </div>
+      <div class="canvas-bar">
+        <div class="tb-group">
+          <button class="btn btn-sm" id="btn-prev-slide">← Anterior</button>
+          <span id="pos-label" style="font-weight:700;font-size:12px">1 / 1</span>
+          <button class="btn btn-sm" id="btn-next-slide">Siguiente →</button>
+        </div>
+        <div class="status-pill" id="status-pill">Listo para editar</div>
+      </div>
+    </main>
+
+    <!-- Derecha: Inspector de propiedades -->
+    <aside class="right-col">
+      <div class="col-head">
+        <span class="col-title">Inspector del bloque</span>
+        <span id="cur-layout-badge" class="si-badge">concept</span>
+      </div>
+      <div class="inspector" id="inspector"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- Modal selector de bloques tipo Elementor -->
+<div class="modal-bg" id="block-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>🧩 Añadir nuevo bloque de diapositiva</h3>
+      <button class="btn btn-sm" id="btn-close-modal">✕ Cerrar</button>
+    </div>
+    <div class="block-grid" id="block-grid"></div>
+  </div>
+</div>
+
+<script>
+const BLOCK_TEMPLATES = [
+  { layout: 'cover', icon: '🎬', name: 'Portada', desc: 'Título grande, subtítulo, autor e imagen de fondo.', data: () => ({ layout: 'cover', kicker: 'Tema · Sesión', title: 'Título de la **presentación**', subtitle: 'Subtítulo descriptivo de la clase', notes: '«¡Bienvenidos a esta sesión!»', beat_notes: [] }) },
+  { layout: 'question', icon: '❓', name: 'Gran Pregunta', desc: 'Pregunta central de impacto con interrogación gigante.', data: () => ({ layout: 'question', kicker: 'La gran pregunta', title: '¿Cuál es el reto clave que vamos a resolver hoy?', subtitle: 'Contexto breve de una línea.', notes: '«Arrancamos planteando la pregunta central de la sesión.»', beat_notes: [] }) },
+  { layout: 'agenda', icon: '🗺️', name: 'Agenda / Mapa', desc: 'De 3 a 5 tarjetas numeradas con el recorrido.', data: () => ({ layout: 'agenda', kicker: 'Hoja de ruta', title: 'Recorrido de la sesión', steps: [{ label: 'Bloque 1', text: 'Primera parte.' }, { label: 'Bloque 2', text: 'Segunda parte.' }, { label: 'Bloque 3', text: 'Tercera parte.' }], notes: '«Este es el recorrido que seguiremos hoy.»', beat_notes: ['«Primero veremos...»', '«Después analizaremos...»', '«Y cerraremos con...»'] }) },
+  { layout: 'section', icon: '📑', name: 'Separador de Bloque', desc: 'Número gigante para cambiar de capítulo.', data: () => ({ layout: 'section', kicker: 'Bloque', title: 'Título del nuevo bloque', subtitle: 'Qué aprenderemos en este apartado', notes: '«Cambiamos ahora de bloque.»', beat_notes: [] }) },
+  { layout: 'concept', icon: '💡', name: 'Concepto + Bullets', desc: 'Texto + lista de puntos a la izquierda y visual a la derecha.', data: () => ({ layout: 'concept', kicker: 'Concepto clave', title: 'Idea principal en formato de afirmación', bullets: ['**Idea 1:** explica aquí el primer punto.', '**Idea 2:** añade un segundo punto claro.'], callout: 'Conclusión clave de la diapositiva.', notes: '«Presentamos este concepto clave.»', beat_notes: ['«Explicación del punto 1.»', '«Explicación del punto 2.»', '«Cierre de la diapositiva.»'] }) },
+  { layout: 'example', icon: '🎯', name: 'Caso / Ejemplo Real', desc: 'Mismo diseño split destacado como caso aplicado.', data: () => ({ layout: 'example', kicker: 'Caso real', title: 'Cómo se aplica esto en un caso real', bullets: ['**Contexto:** describe la situación.', '**Resultado:** qué ocurrió y qué aprendemos.'], callout: 'Lección práctica para el alumno.', notes: '«Veamos un caso real.»', beat_notes: ['«En este caso...»', '«Lo interesante es que...»', '«¿Qué habríais hecho vosotros?»'] }) },
+  { layout: 'comparison', icon: '⚖️', name: 'Comparativa VS', desc: 'Dos columnas enfrentadas con insignia VS.', data: () => ({ layout: 'comparison', kicker: 'Comparativa', title: 'Enfoque A frente a Enfoque B', columns: [{ heading: 'Opción A', bullets: ['**Ventaja:** punto fuerte A.', '**Límite:** punto débil A.'] }, { heading: 'Opción B', bullets: ['**Ventaja:** punto fuerte B.', '**Límite:** punto débil B.'] }], notes: '«Comparemos ambos enfoques.»', beat_notes: ['«Nota A1»', '«Nota A2»', '«Nota B1»', '«Nota B2»'] }) },
+  { layout: 'process', icon: '🪜', name: 'Proceso en Pasos', desc: 'Línea temporal horizontal de 3 a 5 pasos.', data: () => ({ layout: 'process', kicker: 'Paso a paso', title: 'Cómo funciona el proceso en tres fases', steps: [{ label: '1. Inicio', text: 'Primer paso.' }, { label: '2. Desarrollo', text: 'Segundo paso.' }, { label: '3. Cierre', text: 'Tercer paso.' }], notes: '«Veamos el proceso paso a paso.»', beat_notes: ['«Paso 1...»', '«Paso 2...»', '«Paso 3...»'] }) },
+  { layout: 'big-number', icon: '📊', name: 'Cifra / Fórmula / Solución', desc: 'Dato o respuesta gigante en tipografía degradada.', data: () => ({ layout: 'big-number', kicker: 'Dato clave', big_number: '85 %', big_number_label: 'Titular que explica qué significa esta cifra', title: 'Contexto del dato', body: 'Breve aclaración de por qué importa.', notes: '«Fijaos en esta cifra...»', beat_notes: [] }) },
+  { layout: 'diagram', icon: '🔀', name: 'Diagrama Mermaid', desc: 'Mapa visual de flujo o arquitectura.', data: () => ({ layout: 'diagram', kicker: 'Esquema visual', title: 'Flujo del sistema paso a paso', mermaid: 'flowchart LR\n  A["Entrada"] --> B["Proceso"]\n  B --> C["Resultado"]', body: 'Explicación breve del diagrama.', notes: '«En este esquema vemos cómo fluye el proceso.»', beat_notes: [] }) },
+  { layout: 'quote', icon: '❝', name: 'Cita Destacada', desc: 'Frase o principio en tipografía editorial gigante.', data: () => ({ layout: 'quote', kicker: 'Idea clave', quote: 'Escribe aquí una **frase memorable** o un principio clave de la asignatura.', quote_author: 'Autor o fuente', notes: '«Quedaos con esta frase...»', beat_notes: [] }) },
+  { layout: 'summary', icon: '✅', name: 'Resumen / Claves', desc: 'Tarjetas con check verde para cerrar un tema.', data: () => ({ layout: 'summary', kicker: 'Síntesis', title: 'Cuatro ideas clave para recordar hoy', bullets: ['**Clave 1:** resumen breve.', '**Clave 2:** resumen breve.', '**Clave 3:** resumen breve.', '**Clave 4:** resumen breve.'], notes: '«Recapitulemos las ideas principales.»', beat_notes: ['«Clave 1...»', '«Clave 2...»', '«Clave 3...»', '«Clave 4...»'] }) },
+  { layout: 'quiz', icon: '🧠', name: 'Quiz / Pregunta Test', desc: 'Preguntas de debate u opciones A, B, C, D.', data: () => ({ layout: 'quiz', kicker: 'Comprobación en clase', title: '¿Cuál de estas opciones es correcta?', questions: ['A. Primera opción.', 'B. Segunda opción.', 'C. Tercera opción.', 'D. Cuarta opción.'], callout: null, notes: '«¿Qué opción creéis que es la correcta?»', beat_notes: [] }) },
+  { layout: 'video', icon: '▶️', name: 'Vídeo YouTube', desc: 'Tarjeta de vídeo que se reproduce a pantalla completa.', data: () => ({ layout: 'video', kicker: 'Vídeo en clase', title: 'Título del vídeo a proyectar', body: 'Una frase breve de contexto.', video_url: '', video_title: 'Título del vídeo', video_channel: 'YouTube', video_duration: '3:20', notes: '«Vamos a ver este vídeo breve.»', beat_notes: [] }) },
+];
+
+const LAYOUT_LABELS = Object.fromEntries(BLOCK_TEMPLATES.map(b => [b.layout, b.name]));
+
+let currentSlug = '';
+let deck = null;
+let curIdx = 0;
+let previewTimer = null;
+let dragFrom = null;
+
+const $ = (id) => document.getElementById(id);
+
+function setStatus(msg, cls = '') {
+  const el = $('status-pill');
+  el.textContent = msg;
+  el.className = 'status-pill ' + cls;
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, opts);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  if (!res.ok) throw new Error(data?.error || text || 'Error de servidor');
+  return data;
+}
+
+async function loadDeckList(selectSlug = null) {
+  const { decks } = await api('/api/decks');
+  const sel = $('deck-select');
+  sel.innerHTML = decks.map(d => `<option value="${d.slug}">${d.title} (${d.slides} diapos)</option>`).join('');
+  if (!decks.length) {
+    const created = await api('/api/decks/new', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title: 'Mi primera presentación' }) });
+    return loadDeckList(created.slug);
+  }
+  const target = selectSlug && decks.some(d => d.slug === selectSlug) ? selectSlug : decks[0].slug;
+  sel.value = target;
+  await openDeck(target);
+}
+
+async function openDeck(slug) {
+  setStatus('Cargando...');
+  const data = await api(`/api/decks/${slug}`);
+  currentSlug = data.slug;
+  deck = data.deck;
+  curIdx = 0;
+  $('deck-title').value = deck.title || '';
+  $('deck-theme').value = deck.theme || 'aurora';
+  $('deck-tr').value = deck.transition || 'cinematic';
+  renderAll();
+  setStatus('Presentación cargada', 'ok');
+}
+
+function renderAll() {
+  renderSlideList();
+  renderInspector();
+  schedulePreview(true);
+}
+
+function renderSlideList() {
+  if (!deck) return;
+  $('slide-count').textContent = deck.slides.length;
+  $('pos-label').textContent = `${curIdx + 1} / ${deck.slides.length}`;
+  const list = $('slide-list');
+  list.innerHTML = '';
+  deck.slides.forEach((s, idx) => {
+    const div = document.createElement('div');
+    div.className = 'slide-item' + (idx === curIdx ? ' active' : '');
+    div.draggable = true;
+    const plain = (s.title || s.quote || s.big_number_label || '(Sin título)').replace(/\*\*/g, '');
+    div.innerHTML = `
+      <div class="si-top">
+        <span class="si-num">#${String(idx + 1).padStart(2, '0')}</span>
+        <span class="si-badge">${s.layout}</span>
+      </div>
+      <div class="si-title">${escapeHtml(plain)}</div>
+      <div class="si-actions">
+        <button class="si-act-btn" data-act="up" title="Subir">↑</button>
+        <button class="si-act-btn" data-act="down" title="Bajar">↓</button>
+        <button class="si-act-btn" data-act="dup" title="Duplicar">⧉</button>
+        <button class="si-act-btn btn-danger" data-act="del" title="Eliminar">🗑</button>
+      </div>
+    `;
+    div.onclick = (e) => {
+      const act = e.target?.dataset?.act;
+      if (act) {
+        e.stopPropagation();
+        if (act === 'up' && idx > 0) { swapSlides(idx, idx - 1); }
+        else if (act === 'down' && idx < deck.slides.length - 1) { swapSlides(idx, idx + 1); }
+        else if (act === 'dup') {
+          const clone = JSON.parse(JSON.stringify(deck.slides[idx]));
+          deck.slides.splice(idx + 1, 0, clone);
+          curIdx = idx + 1;
+          renderAll();
+        } else if (act === 'del' && deck.slides.length > 1) {
+          deck.slides.splice(idx, 1);
+          curIdx = Math.max(0, Math.min(curIdx, deck.slides.length - 1));
+          renderAll();
+        }
+        return;
+      }
+      curIdx = idx;
+      renderAll();
+    };
+    div.ondragstart = () => { dragFrom = idx; };
+    div.ondragover = (e) => { e.preventDefault(); div.classList.add('drag-over'); };
+    div.ondragleave = () => div.classList.remove('drag-over');
+    div.ondrop = (e) => {
+      e.preventDefault();
+      div.classList.remove('drag-over');
+      if (dragFrom === null || dragFrom === idx) return;
+      const [moved] = deck.slides.splice(dragFrom, 1);
+      deck.slides.splice(idx, 0, moved);
+      curIdx = idx;
+      dragFrom = null;
+      renderAll();
+    };
+    list.appendChild(div);
+  });
+}
+
+function swapSlides(a, b) {
+  const tmp = deck.slides[a];
+  deck.slides[a] = deck.slides[b];
+  deck.slides[b] = tmp;
+  curIdx = b;
+  renderAll();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+function schedulePreview(immediate = false) {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    if (!deck || !currentSlug) return;
+    try {
+      const res = await fetch(`/api/decks/${currentSlug}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deck, slideIndex: curIdx }),
+      });
+      const html = await res.text();
+      $('preview-frame').srcdoc = html;
+    } catch (e) {
+      console.error(e);
+    }
+  }, immediate ? 20 : 240);
+}
+
+function ensureBeatNotes(s, len) {
+  if (!Array.isArray(s.beat_notes)) s.beat_notes = [];
+  while (s.beat_notes.length < len) s.beat_notes.push('');
+}
+
+function renderInspector() {
+  if (!deck || !deck.slides[curIdx]) return;
+  const s = deck.slides[curIdx];
+  $('cur-layout-badge').textContent = s.layout;
+  const box = $('inspector');
+  box.innerHTML = '';
+
+  // 1. Diseño del bloque
+  const secLayout = document.createElement('div');
+  secLayout.className = 'sec';
+  secLayout.innerHTML = `
+    <div class="sec-title">Tipo de bloque y diseño</div>
+    <label class="fld">Layout de la diapositiva
+      <select class="ctrl" id="in-layout">
+        ${BLOCK_TEMPLATES.map(b => `<option value="${b.layout}" ${s.layout === b.layout ? 'selected' : ''}>${b.icon} ${b.name} (${b.layout})</option>`).join('')}
+      </select>
+    </label>
+    ${['concept','example','video'].includes(s.layout) ? `
+    <label class="fld">Posición de la imagen / visual
+      <select class="ctrl" id="in-side">
+        <option value="" ${s.image_side !== 'left' ? 'selected' : ''}>Derecha (por defecto)</option>
+        <option value="left" ${s.image_side === 'left' ? 'selected' : ''}>Izquierda</option>
+      </select>
+    </label>` : ''}
+  `;
+  box.appendChild(secLayout);
+  secLayout.querySelector('#in-layout').onchange = (e) => {
+    const newLayout = e.target.value;
+    s.layout = newLayout;
+    if (newLayout === 'comparison' && (!s.columns || s.columns.length < 2)) {
+      s.columns = [{ heading: 'Columna A', bullets: ['Punto A1'] }, { heading: 'Columna B', bullets: ['Punto B1'] }];
+    }
+    if (['agenda','process'].includes(newLayout) && (!s.steps || !s.steps.length)) {
+      s.steps = [{ label: 'Paso 1', text: 'Descripción 1' }, { label: 'Paso 2', text: 'Descripción 2' }, { label: 'Paso 3', text: 'Descripción 3' }];
+    }
+    if (newLayout === 'quiz' && (!s.questions || !s.questions.length)) {
+      s.questions = ['A. Opción 1', 'B. Opción 2', 'C. Opción 3', 'D. Opción 4'];
+    }
+    renderAll();
+  };
+  const sideEl = secLayout.querySelector('#in-side');
+  if (sideEl) sideEl.onchange = (e) => { s.image_side = e.target.value || null; schedulePreview(); };
+
+  // 2. Textos principales
+  const secText = document.createElement('div');
+  secText.className = 'sec';
+  secText.innerHTML = `<div class="sec-title">Textos principales <span style="font-weight:400;color:var(--muted);text-transform:none">Usa **negrita**</span></div>`;
+  addInput(secText, 'Kicker (etiqueta superior)', s.kicker || '', v => { s.kicker = v; schedulePreview(); });
+  if (s.layout !== 'quote') {
+    addTextarea(secText, 'Título principal', s.title || '', v => { s.title = v; renderSlideList(); schedulePreview(); }, 54);
+  }
+  if (['cover','question','section'].includes(s.layout)) {
+    addTextarea(secText, 'Subtítulo', s.subtitle || '', v => { s.subtitle = v; schedulePreview(); }, 54);
+  }
+  if (['concept','example','big-number','diagram','summary','quiz','video'].includes(s.layout)) {
+    addTextarea(secText, s.layout === 'quiz' ? 'Contexto / Tabla / Afirmaciones I-III (opcional)' : 'Cuerpo de texto (opcional)', s.body || '', v => { s.body = v || null; schedulePreview(); }, 54);
+  }
+  if (s.layout === 'big-number') {
+    addInput(secText, 'Cifra, fórmula o cabecera grande', s.big_number || '', v => { s.big_number = v; schedulePreview(); });
+    addTextarea(secText, 'Etiqueta destacada debajo de la cifra', s.big_number_label || '', v => { s.big_number_label = v; schedulePreview(); }, 54);
+  }
+  if (s.layout === 'quote') {
+    addTextarea(secText, 'Cita destacada', s.quote || '', v => { s.quote = v; renderSlideList(); schedulePreview(); }, 76);
+    addInput(secText, 'Autor / Fuente', s.quote_author || '', v => { s.quote_author = v; schedulePreview(); });
+  }
+  if (s.layout === 'diagram') {
+    addTextarea(secText, 'Código Mermaid', s.mermaid || '', v => { s.mermaid = v; schedulePreview(); }, 105);
+  }
+  if (s.layout === 'video') {
+    addInput(secText, 'URL de YouTube', s.video_url || '', v => { s.video_url = v; schedulePreview(); });
+    addInput(secText, 'Título del vídeo', s.video_title || '', v => { s.video_title = v; schedulePreview(); });
+    addInput(secText, 'Canal', s.video_channel || '', v => { s.video_channel = v; schedulePreview(); });
+    addInput(secText, 'Duración (ej. 3:45)', s.video_duration || '', v => { s.video_duration = v; schedulePreview(); });
+  }
+  box.appendChild(secText);
+
+  // 3. Bloques repetibles (Bullets, Steps, Columns, Quiz) con notas emparejadas
+  if (['concept','example','summary'].includes(s.layout)) {
+    if (!Array.isArray(s.bullets)) s.bullets = [];
+    const secB = document.createElement('div');
+    secB.className = 'sec';
+    secB.innerHTML = `<div class="sec-title"><span>Bullets (${s.bullets.length})</span><button class="btn btn-sm" id="add-bullet">+ Añadir</button></div>`;
+    ensureBeatNotes(s, s.bullets.length + (s.callout ? 1 : 0));
+    s.bullets.forEach((b, k) => {
+      const item = document.createElement('div');
+      item.className = 'rep-item';
+      item.innerHTML = `<div class="rep-head"><span>Punto ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+      item.querySelector('button').onclick = () => { s.bullets.splice(k, 1); s.beat_notes.splice(k, 1); renderInspector(); schedulePreview(); };
+      addTextarea(item, 'Texto en pantalla', b, v => { s.bullets[k] = v; schedulePreview(); }, 48);
+      addTextarea(item, `🎙️ Nota de orador (Pulso ${k + 1})`, s.beat_notes[k] || '', v => { s.beat_notes[k] = v; }, 46, 'note-mini');
+      secB.appendChild(item);
+    });
+    secB.querySelector('#add-bullet').onclick = () => { s.bullets.push('**Nuevo punto:** descripción breve.'); s.beat_notes.splice(s.bullets.length - 1, 0, ''); renderInspector(); schedulePreview(); };
+
+    if (['concept','example'].includes(s.layout)) {
+      addTextarea(secB, 'Callout / Recuadro de cierre (opcional)', s.callout || '', v => { s.callout = v || null; renderInspector(); schedulePreview(); }, 46);
+      if (s.callout) {
+        const cIdx = s.bullets.length;
+        ensureBeatNotes(s, cIdx + 1);
+        addTextarea(secB, `🎙️ Nota de orador del Callout (Pulso ${cIdx + 1})`, s.beat_notes[cIdx] || '', v => { s.beat_notes[cIdx] = v; }, 46, 'note-mini');
+      }
+    }
+    box.appendChild(secB);
+  }
+
+  if (['agenda','process'].includes(s.layout)) {
+    if (!Array.isArray(s.steps)) s.steps = [];
+    const secS = document.createElement('div');
+    secS.className = 'sec';
+    secS.innerHTML = `<div class="sec-title"><span>Pasos (${s.steps.length})</span><button class="btn btn-sm" id="add-step">+ Añadir</button></div>`;
+    ensureBeatNotes(s, s.steps.length);
+    s.steps.forEach((st, k) => {
+      const item = document.createElement('div');
+      item.className = 'rep-item';
+      item.innerHTML = `<div class="rep-head"><span>Paso ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+      item.querySelector('button').onclick = () => { s.steps.splice(k, 1); s.beat_notes.splice(k, 1); renderInspector(); schedulePreview(); };
+      addInput(item, 'Etiqueta', st.label || '', v => { st.label = v; schedulePreview(); });
+      addTextarea(item, 'Descripción', st.text || '', v => { st.text = v; schedulePreview(); }, 46);
+      addTextarea(item, `🎙️ Nota de orador (Pulso ${k + 1})`, s.beat_notes[k] || '', v => { s.beat_notes[k] = v; }, 46, 'note-mini');
+      secS.appendChild(item);
+    });
+    secS.querySelector('#add-step').onclick = () => { s.steps.push({ label: 'Nuevo paso', text: 'Descripción breve.' }); s.beat_notes.push(''); renderInspector(); schedulePreview(); };
+    box.appendChild(secS);
+  }
+
+  if (s.layout === 'comparison') {
+    if (!Array.isArray(s.columns) || s.columns.length < 2) {
+      s.columns = [{ heading: 'Columna 1', bullets: [] }, { heading: 'Columna 2', bullets: [] }];
+    }
+    const secC = document.createElement('div');
+    secC.className = 'sec';
+    secC.innerHTML = `<div class="sec-title">Columnas comparativas (VS)</div>`;
+    let beatCursor = 0;
+    s.columns.slice(0, 2).forEach((col, cIdx) => {
+      if (!Array.isArray(col.bullets)) col.bullets = [];
+      const colBox = document.createElement('div');
+      colBox.className = 'rep-item';
+      colBox.innerHTML = `<div class="rep-head"><span>Columna ${cIdx + 1}</span><button class="btn btn-sm" data-addcol="${cIdx}">+ Bullet</button></div>`;
+      addInput(colBox, 'Título de columna', col.heading || '', v => { col.heading = v; schedulePreview(); });
+      col.bullets.forEach((b, k) => {
+        const bPos = beatCursor++;
+        ensureBeatNotes(s, bPos + 1);
+        const sub = document.createElement('div');
+        sub.style.cssText = 'border-top:1px dashed rgba(255,255,255,.1);padding-top:6px;margin-top:4px;display:flex;flex-direction:column;gap:4px';
+        sub.innerHTML = `<div class="rep-head"><span>Punto ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+        sub.querySelector('button').onclick = () => { col.bullets.splice(k, 1); s.beat_notes.splice(bPos, 1); renderInspector(); schedulePreview(); };
+        addTextarea(sub, 'Texto', b, v => { col.bullets[k] = v; schedulePreview(); }, 44);
+        addTextarea(sub, `🎙️ Nota (Pulso ${bPos + 1})`, s.beat_notes[bPos] || '', v => { s.beat_notes[bPos] = v; }, 42, 'note-mini');
+        colBox.appendChild(sub);
+      });
+      colBox.querySelector(`[data-addcol="${cIdx}"]`).onclick = () => { col.bullets.push('**Nuevo punto:** texto.'); s.beat_notes.splice(beatCursor, 0, ''); renderInspector(); schedulePreview(); };
+      secC.appendChild(colBox);
+    });
+    box.appendChild(secC);
+  }
+
+  if (s.layout === 'quiz') {
+    if (!Array.isArray(s.questions)) s.questions = [];
+    const secQ = document.createElement('div');
+    secQ.className = 'sec';
+    secQ.innerHTML = `<div class="sec-title"><span>Preguntas / Opciones (${s.questions.length})</span><button class="btn btn-sm" id="add-q">+ Añadir</button></div>`;
+    s.questions.forEach((q, k) => {
+      const item = document.createElement('div');
+      item.className = 'rep-item';
+      item.innerHTML = `<div class="rep-head"><span>Elemento ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+      item.querySelector('button').onclick = () => { s.questions.splice(k, 1); if (s.beat_notes?.length > k) s.beat_notes.splice(k, 1); renderInspector(); schedulePreview(); };
+      addTextarea(item, 'Texto (usa "A. ...", "B. ..." para tipo test)', q, v => { s.questions[k] = v; schedulePreview(); }, 46);
+      secQ.appendChild(item);
+    });
+    secQ.querySelector('#add-q').onclick = () => { s.questions.push('Nueva opción'); renderInspector(); schedulePreview(); };
+    addTextarea(secQ, 'Callout inferior (opcional)', s.callout || '', v => { s.callout = v || null; schedulePreview(); }, 44);
+    box.appendChild(secQ);
+  }
+
+  // 4. Imagen / Visual
+  const secImg = document.createElement('div');
+  secImg.className = 'sec';
+  const imgSrc = s.image && !s.image.startsWith('http') && !s.image.startsWith('data:') && !s.image.startsWith('/') ? `/out/${currentSlug}/${s.image}` : s.image;
+  secImg.innerHTML = `
+    <div class="sec-title"><span>Imagen / Ilustración</span>${s.image ? '<button class="btn btn-sm btn-danger" id="rm-img">🗑 Quitar</button>' : ''}</div>
+    ${imgSrc ? `<img class="img-thumb" src="${imgSrc}" alt="Vista previa">` : '<div style="font-size:11.5px;color:var(--muted)">Sin imagen asignada (usa gráfico editorial automático)</div>'}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <label class="btn btn-sm" style="cursor:pointer">📁 Subir imagen del PC<input type="file" id="in-file" accept="image/png,image/jpeg,image/webp" style="display:none"></label>
+      <button class="btn btn-accent2 btn-sm" id="btn-gen-img">✨ Generar imagen IA</button>
+    </div>
+  `;
+  addTextarea(secImg, 'Prompt para generar imagen IA (en inglés o español)', s.image_prompt || '', v => { s.image_prompt = v || null; }, 52);
+  box.appendChild(secImg);
+
+  const rmBtn = secImg.querySelector('#rm-img');
+  if (rmBtn) rmBtn.onclick = () => { s.image = null; renderInspector(); schedulePreview(); };
+
+  secImg.querySelector('#in-file').onchange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        setStatus('Subiendo imagen...');
+        const r = await api(`/api/decks/${currentSlug}/upload-image`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ dataUrl: reader.result })
+        });
+        s.image = r.image;
+        renderInspector();
+        schedulePreview(true);
+        setStatus('Imagen subida ✔', 'ok');
+      } catch (err) { setStatus(err.message, 'err'); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  secImg.querySelector('#btn-gen-img').onclick = async (e) => {
+    if (!s.image_prompt || !s.image_prompt.trim()) {
+      setStatus('Escribe primero un prompt de imagen', 'err');
+      return;
+    }
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generando...';
+    setStatus('Generando imagen con IA (10–20 s)...');
+    try {
+      const r = await api(`/api/decks/${currentSlug}/generate-image`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ deck, slideIndex: curIdx })
+      });
+      s.image = r.image;
+      renderInspector();
+      schedulePreview(true);
+      setStatus('Imagen IA generada ✔', 'ok');
+    } catch (err) {
+      setStatus('Error IA: ' + err.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✨ Generar imagen IA';
+    }
+  };
+
+  // 5. Guion de apertura (Pulso 0)
+  const secNote = document.createElement('div');
+  secNote.className = 'sec';
+  secNote.innerHTML = `<div class="sec-title">🎙️ Guion de apertura (Pulso 0)</div>`;
+  addTextarea(secNote, 'Lo que dices al abrir esta diapositiva', s.notes || '', v => { s.notes = v; }, 96, 'note-mini');
+  box.appendChild(secNote);
+}
+
+function addInput(parent, labelText, value, onChange) {
+  const lbl = document.createElement('label');
+  lbl.className = 'fld';
+  lbl.textContent = labelText;
+  const inp = document.createElement('input');
+  inp.className = 'ctrl';
+  inp.value = value;
+  inp.oninput = () => onChange(inp.value);
+  lbl.appendChild(inp);
+  parent.appendChild(lbl);
+}
+
+function addTextarea(parent, labelText, value, onChange, minH = 56, extraCls = '') {
+  const lbl = document.createElement('label');
+  lbl.className = 'fld';
+  lbl.textContent = labelText;
+  const ta = document.createElement('textarea');
+  ta.className = 'ctrl ' + extraCls;
+  ta.style.minHeight = minH + 'px';
+  ta.value = value;
+  ta.oninput = () => onChange(ta.value);
+  lbl.appendChild(ta);
+  parent.appendChild(lbl);
+}
+
+// Eventos barra superior
+$('deck-select').onchange = (e) => openDeck(e.target.value);
+$('deck-title').oninput = (e) => { if (deck) { deck.title = e.target.value; schedulePreview(); } };
+$('deck-theme').onchange = (e) => { if (deck) { deck.theme = e.target.value; schedulePreview(true); } };
+$('deck-tr').onchange = (e) => { if (deck) { deck.transition = e.target.value; } };
+
+$('btn-new').onclick = async () => {
+  const title = prompt('Nombre de la nueva presentación:', 'Nueva clase');
+  if (!title) return;
+  try {
+    const created = await api('/api/decks/new', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title }) });
+    await loadDeckList(created.slug);
+    setStatus('Nueva presentación creada ✔', 'ok');
+  } catch (e) { setStatus(e.message, 'err'); }
+};
+
+async function saveDeck() {
+  if (!deck || !currentSlug) return;
+  setStatus('Guardando...');
+  await api(`/api/decks/${currentSlug}/save`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ deck }) });
+  setStatus('Guardado ✔', 'ok');
+}
+$('btn-save').onclick = () => saveDeck().catch(e => setStatus(e.message, 'err'));
+
+async function exportDeck(withPdf) {
+  if (!deck || !currentSlug) return;
+  const btn = withPdf ? $('btn-export-pdf') : $('btn-export-html');
+  btn.disabled = true;
+  setStatus(withPdf ? 'Exportando HTML + PDF a Descargas...' : 'Exportando HTML a Descargas...');
+  try {
+    const r = await api(`/api/decks/${currentSlug}/export`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ deck, pdf: withPdf })
+    });
+    setStatus(withPdf ? '✔ HTML y PDF guardados en Descargas' : '✔ HTML guardado en Descargas', 'ok');
+    return r;
+  } catch (e) {
+    setStatus('Error al exportar: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('btn-export-html').onclick = () => exportDeck(false);
+$('btn-export-pdf').onclick = () => exportDeck(true);
+$('btn-presenter').onclick = async () => {
+  const r = await exportDeck(false);
+  if (r?.presenterUrl) window.open(r.presenterUrl, '_blank');
+};
+
+$('btn-prev-slide').onclick = () => { if (deck && curIdx > 0) { curIdx--; renderAll(); } };
+$('btn-next-slide').onclick = () => { if (deck && curIdx < deck.slides.length - 1) { curIdx++; renderAll(); } };
+
+// Modal añadir bloque
+const grid = $('block-grid');
+BLOCK_TEMPLATES.forEach(b => {
+  const card = document.createElement('button');
+  card.className = 'block-card';
+  card.innerHTML = `<div class="bc-icon">${b.icon}</div><div class="bc-name">${b.name}</div><div class="bc-desc">${b.desc}</div>`;
+  card.onclick = () => {
+    if (!deck) return;
+    deck.slides.splice(curIdx + 1, 0, b.data());
+    curIdx = curIdx + 1;
+    $('block-modal').classList.remove('open');
+    renderAll();
+  };
+  grid.appendChild(card);
+});
+$('btn-add-block').onclick = () => $('block-modal').classList.add('open');
+$('btn-close-modal').onclick = () => $('block-modal').classList.remove('open');
+$('block-modal').onclick = (e) => { if (e.target === $('block-modal')) $('block-modal').classList.remove('open'); };
+
+// Atajo Ctrl+S para guardar
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    saveDeck().catch(err => setStatus(err.message, 'err'));
+  }
+});
+
+loadDeckList().catch(e => setStatus(e.message, 'err'));
+</script>
+</body>
+</html>
