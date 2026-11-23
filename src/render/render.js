@@ -309,6 +309,20 @@ const R = {
       </div>
       ${callout(s)}`;
   },
+
+  'visual-infographic': (s) => {
+    let mediaHtml = '<div class="vi-placeholder">Genera o sube una infografía / diagrama visual (o pega un SVG)</div>';
+    if (s.svg && String(s.svg).trim().startsWith('<svg')) {
+      mediaHtml = `<div class="vi-svg">${s.svg}</div>`;
+    } else if (s.image) {
+      mediaHtml = `<div class="img vi-img" style="background-image:url('${esc(s.image)}')"></div>`;
+    }
+    return `
+      ${kicker({ kicker: s.kicker || 'Infografía visual' })}
+      <h2 class="anim">${md(s.title)}</h2>
+      <div class="vi-stage anim a2">${mediaHtml}</div>
+      ${callout(s)}`;
+  },
 };
 
 function editorialGraphic(s, idx = 0) {

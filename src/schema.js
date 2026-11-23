@@ -20,6 +20,7 @@ export const LAYOUTS = {
   bento: 'Infografía visual en rejilla Bento de tarjetas con icono, etiqueta y texto (cards: [{ icon, tag, heading, text, span }]).',
   mindmap: 'Mapa conceptual editable con nodo central (center) y ramas (branches: [{ label, items }]).',
   'visual-abstract': 'Visual Abstract en 4 bloques conectados con flechas (cards: [{ icon, tag, heading, text }]).',
+  'visual-infographic': 'Infografía o diagrama visual a pantalla completa (imagen IA gpt-image-2.6-sunburst o SVG vectorial limpio) sin texto redundante encima.',
 };
 
 export const LAYOUT_NAMES = Object.keys(LAYOUTS);
@@ -128,6 +129,7 @@ export function normalizeDeck(deck) {
       image_prompt: s.image_prompt ?? null,
       image_side: s.image_side ?? null,
       image: s.image ?? null,
+      svg: s.svg ?? null,
       table: s.table ?? null,
       cards: Array.isArray(s.cards) ? s.cards : [],
       center: s.center ?? null,

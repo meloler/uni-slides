@@ -44,7 +44,7 @@ export async function linkExistingImages(deck, outDir) {
   return changed;
 }
 
-const IMAGE_MODEL = () => process.env.SLIDES_IMAGE_MODEL || 'gpt-image-2.5-flare';
+const IMAGE_MODEL = () => process.env.SLIDES_IMAGE_MODEL || 'gpt-image-2.6-sunburst';
 const IMAGE_QUALITY = () => process.env.SLIDES_IMAGE_QUALITY || 'medium';
 
 const NO_TEXT = 'Absolutely no text, letters, numbers, watermarks or logos in the image.';
@@ -54,11 +54,22 @@ const FULL_BLEED = ['cover', 'question', 'quote', 'big-number'];
 
 export function getSlideImageSize(slide) {
   const m = IMAGE_MODEL();
+  if (slide.layout === 'visual-infographic') return '1536x1024';
   if (!FULL_BLEED.includes(slide.layout)) return '1024x1024';
   return m.includes('flare') ? '1536x864' : '1536x1024';
 }
 
 export function buildPrompt(deck, slide) {
+  if (slide.layout === 'visual-infographic') {
+    const themeHint = deck.theme === 'paper'
+      ? 'Clean bright warm-white editorial background (#faf8f5), deep navy typography, coral and indigo accents.'
+      : 'Sleek dark indigo-navy editorial background (#0f1426), crisp white typography, warm coral (#f97316) and soft violet (#8b5cf6) accents.';
+    return [
+      slide.image_prompt,
+      'High-resolution modern university editorial infographic / visual diagram, 16:9 widescreen layout, ultra-legible Spanish labels with exact spelling, clean vector-style icons and arrows, generous margins, zero clutter.',
+      themeHint,
+    ].filter(Boolean).join(' ');
+  }
   const comp = FULL_BLEED.includes(slide.layout)
     ? 'Wide 16:9 cinematic composition with generous empty negative space on the left side for overlaid text.'
     : 'Centered subject with generous margin around the edges so nothing is cropped, clean uncluttered composition.';

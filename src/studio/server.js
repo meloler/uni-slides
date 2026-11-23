@@ -100,9 +100,11 @@ Formatos disponibles para cada diapositiva (devuelve SIEMPRE JSON válido en esp
 - "bento": { layout, kicker, title, cards: [{ icon: "🎯", tag: "ETIQUETA", heading: "Título", text: "Resumen breve", span: 1 }], callout, notes, beat_notes: [...] } (3 a 6 tarjetas estilo infografía Bento; puedes poner span: 2 en una tarjeta destacada)
 - "mindmap": { layout, kicker, title, center: "Idea Central", branches: [{ label: "Rama 1", items: ["detalle 1", "detalle 2"] }], callout, notes, beat_notes: [...] } (4 ramas ideales: 2 a la izquierda y 2 a la derecha)
 - "visual-abstract": { layout, kicker, title, body, cards: [{ icon: "1", tag: "CONTEXTO", heading: "...", text: "..." }], callout, notes, beat_notes: [...] } (3 o 4 bloques conectados con flechas: Problema -> Método -> Hallazgo -> Impacto)
-Reglas para notas de orador:
-- "notes" (Pulso 0): guion hablado natural dirigido a los alumnos entre comillas «...».
-- "beat_notes": guion hablado natural 1 a 1 con cada elemento con pulso (nunca repetir literalmente el texto en pantalla; explica con ejemplos reales).
+- "visual-infographic": { layout, kicker, title, image_prompt: "Descripción detallada en español/inglés de la infografía o diagrama con etiquetas exactas en español...", callout, notes, beat_notes: [] } (diapositiva donde la propia infografía o diagrama visual sustituye al texto; el guion "notes" recorre paso a paso lo que el alumno está viendo en esa infografía)
+Reglas CRÍTICAS para notas de orador (sincronía exacta con la pizarra):
+- Las notas de orador DEBEN encajar al 100 % con lo que se está proyectando en ese instante exacto en la pizarra.
+- "notes" (Pulso 0): guion hablado natural dirigido a los alumnos entre comillas «...», presentando el titular y guiando la mirada hacia lo que aparece en pantalla (en "visual-infographic", explica en orden cada parte del diagrama/infografía proyectada).
+- "beat_notes": guion hablado natural 1 a 1 con cada elemento que se ilumina por pulso (nunca repetir literalmente el texto; traduce a lenguaje cotidiano, aporta un ejemplo real y comenta exactamente la tarjeta/fila/rama/bullet que acaba de aparecer en pantalla).
 `;
 
 const slugify = (s) =>
