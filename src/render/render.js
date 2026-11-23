@@ -21,7 +21,31 @@ const pad = (n) => String(n).padStart(2, '0');
 const kicker = (s, cls = 'anim') => (s.kicker ? `<div class="kicker ${cls}">${esc(s.kicker)}</div>` : '');
 const bullets = (arr, cls = 'anim') =>
   arr?.length ? `<ul class="bullets ${cls}">${arr.map((b) => `<li class="beat">${md(b)}</li>`).join('')}</ul>` : '';
-const body = (s, cls = 'anim') => (s.body ? `<p class="body ${cls}">${md(s.body)}</p>` : '');
+const body = (s, cls = 'anim') => {
+  if (!s.body) return '';
+  const lines = String(s.body).split('\n').map((l) => l.trim()).filter(Boolean);
+  const tableStart = lines.findIndex((l) => l.startsWith('|'));
+  if (tableStart !== -1 && lines.filter((l) => l.startsWith('|')).length >= 2) {
+    const before = lines.slice(0, tableStart);
+    const tableLines = [];
+    let i = tableStart;
+    while (i < lines.length && lines[i].startsWith('|')) {
+      tableLines.push(lines[i]);
+      i++;
+    }
+    const after = lines.slice(i);
+    const parseRow = (row) => row.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+    const headers = parseRow(tableLines[0]);
+    const dataLines = tableLines.slice(1).filter((l) => !/^\|?[\s:|-]+\|?$/.test(l));
+    const tableHtml = `<table class="data-table ${cls}"><thead><tr>${headers.map((h) => `<th>${md(h)}</th>`).join('')}</tr></thead><tbody>${dataLines.map((r) => `<tr>${parseRow(r).map((c) => `<td>${md(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    return [
+      ...before.map((l) => `<p class="body ${cls}">${md(l)}</p>`),
+      tableHtml,
+      ...after.map((l) => `<p class="body ${cls}">${md(l)}</p>`),
+    ].join('');
+  }
+  return `<p class="body ${cls}">${md(s.body)}</p>`;
+};
 const callout = (s, cls = 'anim') => (s.callout ? `<div class="callout beat ${cls}">${md(s.callout)}</div>` : '');
 const imgDiv = (s, cls) =>
   s.image ? `<div class="img ${cls}" style="background-image:url('${esc(s.image)}')"></div>` : `<div class="ph ${cls}"></div>`;
@@ -199,6 +223,92 @@ const R = {
         </div>
       </div>`;
   },
+
+  table: (s) => {
+    const tbl = s.table || { headers: ['Columna 1', 'Columna 2'], rows: [['Dato 1', 'Dato 2']] };
+    const headers = Array.isArray(tbl.headers) ? tbl.headers : [];
+    const rows = Array.isArray(tbl.rows) ? tbl.rows : [];
+    const useBeats = Array.isArray(s.beat_notes) && s.beat_notes.some((n) => String(n || '').trim());
+    return `
+      ${kicker({ kicker: s.kicker || 'Tabla comparativa' })}
+      <h2 class="anim">${md(s.title)}</h2>
+      ${body(s)}
+      <div class="g-table-wrap anim a2">
+        <table class="g-table">
+          <thead><tr>${headers.map((h) => `<th>${md(h)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map((r, ri) => `<tr class="${useBeats ? 'beat ' : ''}">
+              ${(Array.isArray(r) ? r : []).map((c, ci) => `<td class="${ci === 0 ? 'g-td-lead' : ''}">${md(c)}</td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${callout(s)}`;
+  },
+
+  bento: (s) => {
+    const cards = Array.isArray(s.cards) && s.cards.length ? s.cards : [];
+    const useBeats = Array.isArray(s.beat_notes) && s.beat_notes.some((n) => String(n || '').trim());
+    const cols = cards.length <= 3 ? cards.length : (cards.length === 4 ? 2 : 3);
+    return `
+      ${kicker({ kicker: s.kicker || 'Infografía visual' })}
+      <h2 class="anim">${md(s.title)}</h2>
+      <div class="bento-grid bcols-${Math.max(2, cols)}">
+        ${cards.map((c, idx) => `
+          <div class="card bento-card ${c.span === 2 ? 'bento-span2' : ''} ${useBeats ? 'beat ' : ''}anim a${Math.min(5, idx + 2)}">
+            <div class="bento-top">
+              ${c.icon ? `<span class="bento-icon">${esc(c.icon)}</span>` : ''}
+              ${c.tag ? `<span class="bento-tag">${esc(c.tag)}</span>` : ''}
+            </div>
+            <h3>${md(c.heading || '')}</h3>
+            <p>${md(c.text || '')}</p>
+          </div>`).join('')}
+      </div>
+      ${callout(s)}`;
+  },
+
+  mindmap: (s) => {
+    const branches = Array.isArray(s.branches) ? s.branches : [];
+    const half = Math.ceil(branches.length / 2);
+    const leftB = branches.slice(0, half);
+    const rightB = branches.slice(half);
+    const useBeats = Array.isArray(s.beat_notes) && s.beat_notes.some((n) => String(n || '').trim());
+    const renderBranch = (br, idx) => `
+      <div class="mm-branch ${useBeats ? 'beat ' : ''}anim a${Math.min(5, idx + 2)}">
+        <div class="mm-b-head">${md(br.label || '')}</div>
+        <ul>${(br.items || []).map((it) => `<li>${md(it)}</li>`).join('')}</ul>
+      </div>`;
+    return `
+      ${kicker({ kicker: s.kicker || 'Mapa conceptual' })}
+      <h2 class="anim">${md(s.title)}</h2>
+      <div class="mm-wrap">
+        <div class="mm-side mm-left">${leftB.map((b, i) => renderBranch(b, i)).join('')}</div>
+        <div class="mm-center anim"><div class="mm-hub">${md(s.center || s.title)}</div></div>
+        <div class="mm-side mm-right">${rightB.map((b, i) => renderBranch(b, i + half)).join('')}</div>
+      </div>
+      ${callout(s)}`;
+  },
+
+  'visual-abstract': (s) => {
+    const cards = Array.isArray(s.cards) && s.cards.length ? s.cards : (s.steps || []).map((st, i) => ({ icon: '0' + (i + 1), tag: 'Fase ' + (i + 1), heading: st.label, text: st.text }));
+    const useBeats = Array.isArray(s.beat_notes) && s.beat_notes.some((n) => String(n || '').trim());
+    return `
+      ${kicker({ kicker: s.kicker || 'Visual Abstract' })}
+      <h2 class="anim">${md(s.title)}</h2>
+      ${body(s)}
+      <div class="va-flow n${Math.min(4, Math.max(2, cards.length))}">
+        ${cards.slice(0, 4).map((c, idx) => `
+          <div class="card va-card ${useBeats ? 'beat ' : ''}anim a${Math.min(5, idx + 2)}">
+            <div class="va-head">
+              <div class="va-icon">${esc(c.icon || String(idx + 1))}</div>
+              <div class="va-tag">${esc(c.tag || ('Bloque ' + (idx + 1)))}</div>
+            </div>
+            <h3>${md(c.heading || '')}</h3>
+            <p>${md(c.text || '')}</p>
+          </div>`).join('')}
+      </div>
+      ${callout(s)}`;
+  },
 };
 
 function editorialGraphic(s, idx = 0) {
@@ -242,16 +352,19 @@ function editorialGraphic(s, idx = 0) {
 }
 
 function split(s, d, idx = 0) {
+  const hasTable = Boolean(s.body && String(s.body).split('\n').filter((l) => l.trim().startsWith('|')).length >= 2);
   let visual = '';
-  if (s.mermaid) {
-    visual = `<div class="visual diagram-box anim a3">${mermaid(s.mermaid)}</div>`;
-  } else if (s.image) {
-    visual = `<div class="visual anim a3">${imgDiv(s, '')}</div>`;
-  } else {
-    visual = `<div class="visual editorial-art anim a3">${editorialGraphic(s, idx)}</div>`;
+  if (!hasTable) {
+    if (s.mermaid) {
+      visual = `<div class="visual diagram-box anim a3">${mermaid(s.mermaid)}</div>`;
+    } else if (s.image) {
+      visual = `<div class="visual anim a3">${imgDiv(s, '')}</div>`;
+    } else {
+      visual = `<div class="visual editorial-art anim a3">${editorialGraphic(s, idx)}</div>`;
+    }
   }
   return `
-    <div class="txt">
+    <div class="txt${hasTable ? ' full-width' : ''}">
       ${kicker(s)}
       <h2 class="anim">${md(s.title)}</h2>
       ${body(s)}
@@ -906,7 +1019,7 @@ const RUNTIME = String.raw`
     ovCards.forEach((el, k) => el.classList.toggle('active', k === i));
     applyBeats();
 
-    if (i !== prevSlide) {
+    if (i !== prevSlide && !location.search.includes('pdf=1')) {
       slides[i].querySelectorAll('.count-up').forEach(animateCount);
     }
 

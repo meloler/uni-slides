@@ -8,6 +8,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { normalizeDeck } from '../schema.js';
 import { renderHTML, renderDeck, renderStandaloneHTML, listThemes } from '../render/render.js';
+import { resilientFetch } from '../net.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..', '..');
@@ -44,6 +45,65 @@ function loadEnvironment() {
 }
 
 loadEnvironment();
+
+const DEFAULT_STUDIO_MODEL = process.env.STUDIO_AI_MODEL || 'gpt-6-luna';
+
+async function callOpenAIJson({ system, user, model, reasoningEffort }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('Falta OPENAI_API_KEY en el archivo .env');
+  const chosenModel = model || DEFAULT_STUDIO_MODEL;
+  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const payload = {
+    model: chosenModel,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+  };
+  if (reasoningEffort && /^gpt-(5|6)/i.test(chosenModel)) {
+    payload.reasoning_effort = reasoningEffort;
+  }
+  const resp = await resilientFetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    const errTxt = await resp.text();
+    throw new Error(`OpenAI (${chosenModel}) HTTP ${resp.status}: ${errTxt.slice(0, 220)}`);
+  }
+  const data = await resp.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('La IA devolvió una respuesta vacía');
+  return JSON.parse(content);
+}
+
+const LAYOUT_SPECS = `
+Formatos disponibles para cada diapositiva (devuelve SIEMPRE JSON válido en español):
+- "cover": { layout, kicker, title, subtitle, notes, beat_notes: [] }
+- "question": { layout, kicker, title, subtitle, notes, beat_notes: [] }
+- "agenda": { layout, kicker, title, steps: [{label, text}], notes, beat_notes: [...] }
+- "section": { layout, kicker, title, subtitle, notes, beat_notes: [] }
+- "concept" o "example": { layout, kicker, title, body, bullets: ["**Término:** explicación"], callout, notes, beat_notes: [...] } (1 beat_note por cada bullet + 1 por callout)
+- "comparison": { layout, kicker, title, columns: [{heading, bullets}, {heading, bullets}], notes, beat_notes: [...] }
+- "process": { layout, kicker, title, steps: [{label, text}], notes, beat_notes: [...] }
+- "big-number": { layout, kicker, title, big_number, big_number_label, body, notes, beat_notes: [] }
+- "diagram": { layout, kicker, title, mermaid: "flowchart LR\\n  A[\\"Inicio\\"] --> B[\\"Fin\\"]", body, notes, beat_notes: [] }
+- "quote": { layout, kicker, quote, quote_author, notes, beat_notes: [] }
+- "summary": { layout, kicker, title, bullets: [...], notes, beat_notes: [...] }
+- "quiz": { layout, kicker, title, questions: [...], callout, notes, beat_notes: [...] }
+- "table": { layout, kicker, title, body, table: { headers: ["Col1", "Col2", "Col3"], rows: [["v1", "v2", "v3"]] }, callout, notes, beat_notes: [...] } (máx 4-5 columnas y 4-6 filas; 1 beat_note por fila o [] si se muestra entera)
+- "bento": { layout, kicker, title, cards: [{ icon: "🎯", tag: "ETIQUETA", heading: "Título", text: "Resumen breve", span: 1 }], callout, notes, beat_notes: [...] } (3 a 6 tarjetas estilo infografía Bento; puedes poner span: 2 en una tarjeta destacada)
+- "mindmap": { layout, kicker, title, center: "Idea Central", branches: [{ label: "Rama 1", items: ["detalle 1", "detalle 2"] }], callout, notes, beat_notes: [...] } (4 ramas ideales: 2 a la izquierda y 2 a la derecha)
+- "visual-abstract": { layout, kicker, title, body, cards: [{ icon: "1", tag: "CONTEXTO", heading: "...", text: "..." }], callout, notes, beat_notes: [...] } (3 o 4 bloques conectados con flechas: Problema -> Método -> Hallazgo -> Impacto)
+Reglas para notas de orador:
+- "notes" (Pulso 0): guion hablado natural dirigido a los alumnos entre comillas «...».
+- "beat_notes": guion hablado natural 1 a 1 con cada elemento con pulso (nunca repetir literalmente el texto en pantalla; explica con ejemplos reales).
+`;
 
 const slugify = (s) =>
   String(s || 'nueva-presentacion')
@@ -129,15 +189,19 @@ async function renderPreviewHTML(deck, slug, slideIdx = 0) {
   const themeCss = await readFile(existsSync(themeFile) ? themeFile : fallbackTheme, 'utf8');
   const baseCss = await readFile(path.join(root, 'src', 'render', 'base.css'), 'utf8');
 
-  // Re-mapear rutas relativas images/... a /out/<slug>/images/... para la vista previa en vivo
+  const totalSlides = normalized.slides.length || 1;
+  const idx = Math.max(0, Math.min(totalSlides - 1, Number(slideIdx) || 0));
+  const activeSlide = normalized.slides[idx] || normalized.slides[0];
+  const mappedSlide = activeSlide ? {
+    ...activeSlide,
+    image: activeSlide.image && !activeSlide.image.startsWith('http') && !activeSlide.image.startsWith('data:') && !activeSlide.image.startsWith('/')
+      ? `/out/${slug}/${activeSlide.image}`
+      : activeSlide.image,
+  } : null;
+
   const previewDeck = {
     ...normalized,
-    slides: normalized.slides.map((s) => ({
-      ...s,
-      image: s.image && !s.image.startsWith('http') && !s.image.startsWith('data:') && !s.image.startsWith('/')
-        ? `/out/${slug}/${s.image}`
-        : s.image,
-    })),
+    slides: mappedSlide ? [mappedSlide] : [],
   };
 
   let html = renderHTML(previewDeck, {
@@ -145,30 +209,16 @@ async function renderPreviewHTML(deck, slug, slideIdx = 0) {
     mermaidSrc: 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
   });
 
-  // Inyectar script de posicionamiento inmediato en la diapositiva seleccionada (sin blur de transición)
-  const jumpScript = `
+  // Mostrar el número real de diapositiva en el pie de página y ocultar HUD/transiciones
+  html = html.replace('<span class="foot-pos">1 / 1</span>', `<span class="foot-pos">${idx + 1} / ${totalSlides}</span>`);
+  const previewStyle = `
 <style>
   .hud, .progress, .notes-panel { display: none !important; }
-  .deck .slide { transition: none !important; }
+  .deck .slide { transition: none !important; opacity: 1 !important; visibility: visible !important; transform: none !important; filter: none !important; }
   body.beat-mode .slide .beat { opacity: 1 !important; transform: none !important; filter: none !important; pointer-events: auto !important; }
   .slide .anim { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
-</style>
-<script>
-  window.addEventListener('DOMContentLoaded', () => {
-    const check = setInterval(() => {
-      if (typeof window.__show === 'function') {
-        clearInterval(check);
-        window.__show(${Math.max(0, Number(slideIdx) || 0)});
-      }
-    }, 30);
-    window.addEventListener('message', (ev) => {
-      if (ev.data && ev.data.type === 'jump' && typeof window.__show === 'function') {
-        window.__show(ev.data.index || 0);
-      }
-    });
-  });
-</script>`;
-  html = html.replace('</body>', `${jumpScript}\n</body>`);
+</style>`;
+  html = html.replace('</body>', `${previewStyle}\n</body>`);
   return html;
 }
 
@@ -256,6 +306,69 @@ const server = http.createServer(async (req, res) => {
       });
       await writeFile(path.join(outDir, 'deck.json'), JSON.stringify(deck, null, 2), 'utf8');
       return sendJson(res, 200, { slug, deck });
+    }
+
+    // IA: Transformar una diapositiva existente a otro bloque visual (estilo Gamma)
+    if (req.method === 'POST' && p === '/api/ai/transform-slide') {
+      const body = JSON.parse(await readBody(req));
+      const { slide, targetLayout, deckTitle, model } = body;
+      if (!slide || !targetLayout) return sendJson(res, 400, { error: 'Falta slide o targetLayout' });
+      const system = `Eres un diseñador instruccional y editor visual experto (estilo Gamma.app) para clases universitarias en español.
+Convierte el contenido de la diapositiva proporcionada al formato exacto "${targetLayout}" sin perder rigor ni inventar datos falsos.
+${LAYOUT_SPECS}
+Devuelve ÚNICAMENTE un objeto JSON con la diapositiva transformada (propiedad "layout": "${targetLayout}").`;
+      const user = `Presentación: "${deckTitle || ''}"
+Formato destino deseado: "${targetLayout}"
+Diapositiva actual (JSON):
+${JSON.stringify(slide, null, 2)}`;
+      const transformed = await callOpenAIJson({ system, user, model, reasoningEffort: 'low' });
+      transformed.layout = targetLayout;
+      const norm = normalizeDeck({ slides: [transformed] }).slides[0];
+      // Conservar imagen si el layout destino la soporta y el original tenía una
+      if (slide.image && !norm.image && ['cover', 'question', 'section', 'concept', 'example', 'big-number', 'quote'].includes(targetLayout)) {
+        norm.image = slide.image;
+      }
+      return sendJson(res, 200, { ok: true, slide: norm, model: model || DEFAULT_STUDIO_MODEL });
+    }
+
+    // IA: Generar una presentación completa estilo Gamma a partir de un temario en Markdown/texto
+    if (req.method === 'POST' && p === '/api/ai/generate-deck') {
+      const body = JSON.parse(await readBody(req));
+      const markdown = String(body.markdown || '').trim();
+      if (markdown.length < 30) return sendJson(res, 400, { error: 'Pega o sube un temario más completo (mínimo 30 caracteres)' });
+      const theme = body.theme || 'aurora';
+      const author = body.author || 'Grado en Comunicación';
+      const model = body.model || DEFAULT_STUDIO_MODEL;
+
+      const system = `Eres un diseñador pedagógico experto que crea presentaciones universitarias visuales estilo Gamma.app en español.
+A partir del temario en Markdown o texto del usuario, diseña una presentación rica, variada y fiel al temario (el número de diapositivas debe ser el natural para cubrir TODO el contenido sin omitir conceptos ni meter relleno).
+OBLIGATORIO: Varía muchísimo los bloques visuales para que NO todas las diapositivas sean bullets: alterna "bento" (infografía de tarjetas), "table" (tablas comparativas), "mindmap" (mapas conceptuales), "visual-abstract" (esquemas de 4 bloques conectados), "comparison" (VS), "process" (pasos), "diagram" (Mermaid), "big-number", "example" y "concept".
+${LAYOUT_SPECS}
+Devuelve ÚNICAMENTE un JSON con esta forma:
+{
+  "title": "Título de la presentación",
+  "subtitle": "Subtítulo breve",
+  "hook": "Gran pregunta de la sesión",
+  "slides": [ ... ]
+}`;
+      const user = `Temario a convertir en presentación visual estilo Gamma:\n\n${markdown.slice(0, 28000)}`;
+      const generated = await callOpenAIJson({ system, user, model });
+      const title = String(body.title || generated.title || 'Presentación IA').trim();
+      let slug = slugify(title);
+      if (existsSync(path.join(outRoot, slug, 'deck.json'))) {
+        slug = `${slug}-${Date.now().toString().slice(-4)}`;
+      }
+      const deck = normalizeDeck({
+        ...generated,
+        title,
+        author,
+        theme,
+        transition: body.transition || 'cinematic',
+      });
+      const outDir = path.join(outRoot, slug);
+      await mkdir(outDir, { recursive: true });
+      await writeFile(path.join(outDir, 'deck.json'), JSON.stringify(deck, null, 2), 'utf8');
+      return sendJson(res, 200, { ok: true, slug, deck, model });
     }
 
     // Rutas por slug: /api/decks/:slug/...

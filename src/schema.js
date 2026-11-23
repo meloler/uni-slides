@@ -16,6 +16,10 @@ export const LAYOUTS = {
   video: 'Vídeo de YouTube para dinamizar la clase: video_query (búsqueda) + bullets de qué observar/comentar.',
   summary: 'Síntesis: vuelve a la gran pregunta y la responde. Takeaways en bullets (3-4).',
   quiz: 'Debate / Repaso: 3-4 preguntas en "questions" (seguido siempre de una diapositiva con las respuestas).',
+  table: 'Tabla comparativa o matriz estructurada editable (table: { headers, rows }).',
+  bento: 'Infografía visual en rejilla Bento de tarjetas con icono, etiqueta y texto (cards: [{ icon, tag, heading, text, span }]).',
+  mindmap: 'Mapa conceptual editable con nodo central (center) y ramas (branches: [{ label, items }]).',
+  'visual-abstract': 'Visual Abstract en 4 bloques conectados con flechas (cards: [{ icon, tag, heading, text }]).',
 };
 
 export const LAYOUT_NAMES = Object.keys(LAYOUTS);
@@ -93,6 +97,7 @@ export function normalizeDeck(deck) {
     author: deck.author ?? null,
     hook: deck.hook || '',
     theme: deck.theme || 'aurora',
+    transition: deck.transition || 'cinematic',
     image_style: deck.image_style || '',
     preferences: deck.preferences || null,
     slides: [],
@@ -123,6 +128,10 @@ export function normalizeDeck(deck) {
       image_prompt: s.image_prompt ?? null,
       image_side: s.image_side ?? null,
       image: s.image ?? null,
+      table: s.table ?? null,
+      cards: Array.isArray(s.cards) ? s.cards : [],
+      center: s.center ?? null,
+      branches: Array.isArray(s.branches) ? s.branches : [],
       notes: s.notes || '',
       beat_notes: Array.isArray(s.beat_notes) ? s.beat_notes : [],
     };

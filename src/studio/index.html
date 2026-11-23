@@ -175,6 +175,20 @@
   .bc-icon { font-size: 20px; margin-bottom: 6px; }
   .bc-name { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
   .bc-desc { font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .ai-bar {
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .ai-chip {
+    background: rgba(139,92,246,.14); color: #e2d9ff; border: 1px solid rgba(139,92,246,.38);
+    border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 700; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .ai-chip:hover { background: rgba(139,92,246,.32); border-color: #a78bfa; color: #fff; }
+  .ai-chip:disabled { opacity: .45; cursor: wait; }
+  .tbl-edit { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .tbl-edit th, .tbl-edit td { border: 1px solid var(--border); padding: 3px; }
+  .tbl-edit input { width: 100%; background: transparent; color: var(--fg); border: none; outline: none; font-size: 11.5px; padding: 3px 4px; }
+  .tbl-edit th input { font-weight: 700; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -184,6 +198,7 @@
       <div class="logo"><span class="logo-dot"></span> Uni-Slides Studio</div>
       <select class="tb-select" id="deck-select" title="Abrir presentación existente"></select>
       <button class="btn btn-sm" id="btn-new">+ Nueva</button>
+      <button class="btn btn-accent2 btn-sm" id="btn-ai-new" title="Pegar o subir temario .md para generar presentación estilo Gamma con IA">✨ Crear con IA</button>
     </div>
     <div class="tb-group">
       <input class="tb-input title-in" id="deck-title" placeholder="Título de la presentación">
@@ -256,8 +271,48 @@
   </div>
 </div>
 
+<!-- Modal Crear Presentación desde Temario con IA (estilo Gamma) -->
+<div class="modal-bg" id="ai-modal">
+  <div class="modal-card" style="max-width:720px">
+    <div class="modal-head">
+      <h3>✨ Crear presentación estilo Gamma desde tu temario (.md)</h3>
+      <button class="btn btn-sm" id="btn-close-ai-modal">✕ Cerrar</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label class="btn btn-sm" style="cursor:pointer">📄 Cargar archivo .md o .txt<input type="file" id="ai-file-in" accept=".md,.txt,text/markdown,text/plain" style="display:none"></label>
+        <select class="tb-select" id="ai-model-select" title="Modelo OpenAI">
+          <option value="gpt-6-luna" selected>Modelo IA: gpt-6-luna (recomendado · económico)</option>
+          <option value="gpt-5.4-nano">Modelo IA: gpt-5.4-nano (ultra rápido)</option>
+          <option value="gpt-5-mini">Modelo IA: gpt-5-mini</option>
+          <option value="gpt-4o-mini">Modelo IA: gpt-4o-mini</option>
+        </select>
+        <select class="tb-select" id="ai-theme-select">
+          <option value="aurora">Tema: Aurora</option>
+          <option value="paper">Tema: Paper</option>
+          <option value="neon">Tema: Neon</option>
+        </select>
+      </div>
+      <label class="fld">Título opcional (si lo dejas vacío lo extrae del temario)
+        <input class="ctrl" id="ai-deck-title" placeholder="Ej.: Tema 5 · Arquitectura de la Información">
+      </label>
+      <label class="fld">Pega aquí tu temario en Markdown o texto (con títulos #, listas y tablas)
+        <textarea class="ctrl" id="ai-md-text" style="min-height:240px;font-family:ui-monospace,monospace;font-size:12px" placeholder="# Título del tema&#10;&#10;## 1. Primer apartado&#10;Pega aquí tus apuntes en Markdown..."></textarea>
+      </label>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span id="ai-modal-status" style="font-size:12px;color:var(--muted)">Generará automáticamente tablas, infografías Bento, mapas conceptuales, Visual Abstracts y notas de orador.</span>
+        <button class="btn btn-accent2" id="btn-run-ai-deck">✨ Generar presentación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const BLOCK_TEMPLATES = [
+  { layout: 'bento', icon: '🧩', name: 'Infografía Bento', desc: 'Rejilla visual de tarjetas con iconos y etiquetas (estilo Gamma).', data: () => ({ layout: 'bento', kicker: 'Infografía visual', title: 'Cuatro claves resumidas de un vistazo', cards: [{ icon: '🎯', tag: 'CLAVE 1', heading: 'Primer pilar', text: 'Explicación breve y visual.', span: 2 }, { icon: '⚡', tag: 'CLAVE 2', heading: 'Segundo pilar', text: 'Dato o idea rápida.', span: 1 }, { icon: '🔍', tag: 'CLAVE 3', heading: 'Tercer pilar', text: 'Ejemplo aplicado.', span: 1 }], callout: null, notes: '«En esta infografía resumimos las claves del bloque.»', beat_notes: ['«Primer pilar...»', '«Segundo pilar...»', '«Tercer pilar...»'] }) },
+  { layout: 'table', icon: '📋', name: 'Tabla Editable', desc: 'Matriz comparativa con filas y columnas editables celda a celda.', data: () => ({ layout: 'table', kicker: 'Tabla comparativa', title: 'Comparativa clara de opciones o conceptos', table: { headers: ['Criterio', 'Opción A', 'Opción B'], rows: [['Objetivo', 'Descripción A', 'Descripción B'], ['Ventaja clave', 'Punto fuerte A', 'Punto fuerte B'], ['Cuándo usar', 'Escenario A', 'Escenario B']] }, callout: null, notes: '«Veamos esta tabla comparativa.»', beat_notes: [] }) },
+  { layout: 'mindmap', icon: '🗺️', name: 'Mapa Conceptual', desc: 'Nodo central rodeado de 4 ramas visuales editables.', data: () => ({ layout: 'mindmap', kicker: 'Mapa conceptual', title: 'Estructura completa del concepto', center: 'Idea Central', branches: [{ label: 'Rama 1', items: ['Subpunto 1A', 'Subpunto 1B'] }, { label: 'Rama 2', items: ['Subpunto 2A', 'Subpunto 2B'] }, { label: 'Rama 3', items: ['Subpunto 3A', 'Subpunto 3B'] }, { label: 'Rama 4', items: ['Subpunto 4A', 'Subpunto 4B'] }], callout: null, notes: '«Este mapa conceptual conecta las cuatro ramas del tema.»', beat_notes: ['«Rama 1...»', '«Rama 2...»', '«Rama 3...»', '«Rama 4...»'] }) },
+  { layout: 'visual-abstract', icon: '🧬', name: 'Visual Abstract', desc: '4 bloques conectados con flechas (Problema → Método → Hallazgo → Impacto).', data: () => ({ layout: 'visual-abstract', kicker: 'Visual Abstract', title: 'Síntesis visual completa del caso o estudio', cards: [{ icon: '1', tag: 'PROBLEMA', heading: 'Qué reto existe', text: 'Contexto inicial.' }, { icon: '2', tag: 'MÉTODO', heading: 'Cómo se analiza', text: 'Enfoque aplicado.' }, { icon: '3', tag: 'HALLAZGO', heading: 'Qué descubrimos', text: 'Evidencia principal.' }, { icon: '4', tag: 'IMPACTO', heading: 'Qué decisión tomar', text: 'Aplicación práctica.' }], callout: null, notes: '«Aquí tenéis el Visual Abstract de todo el proceso.»', beat_notes: ['«Problema...»', '«Método...»', '«Hallazgo...»', '«Impacto...»'] }) },
   { layout: 'cover', icon: '🎬', name: 'Portada', desc: 'Título grande, subtítulo, autor e imagen de fondo.', data: () => ({ layout: 'cover', kicker: 'Tema · Sesión', title: 'Título de la **presentación**', subtitle: 'Subtítulo descriptivo de la clase', notes: '«¡Bienvenidos a esta sesión!»', beat_notes: [] }) },
   { layout: 'question', icon: '❓', name: 'Gran Pregunta', desc: 'Pregunta central de impacto con interrogación gigante.', data: () => ({ layout: 'question', kicker: 'La gran pregunta', title: '¿Cuál es el reto clave que vamos a resolver hoy?', subtitle: 'Contexto breve de una línea.', notes: '«Arrancamos planteando la pregunta central de la sesión.»', beat_notes: [] }) },
   { layout: 'agenda', icon: '🗺️', name: 'Agenda / Mapa', desc: 'De 3 a 5 tarjetas numeradas con el recorrido.', data: () => ({ layout: 'agenda', kicker: 'Hoja de ruta', title: 'Recorrido de la sesión', steps: [{ label: 'Bloque 1', text: 'Primera parte.' }, { label: 'Bloque 2', text: 'Segunda parte.' }, { label: 'Bloque 3', text: 'Tercera parte.' }], notes: '«Este es el recorrido que seguiremos hoy.»', beat_notes: ['«Primero veremos...»', '«Después analizaremos...»', '«Y cerraremos con...»'] }) },
@@ -281,6 +336,7 @@ let deck = null;
 let curIdx = 0;
 let previewTimer = null;
 let dragFrom = null;
+const slideUndoStack = {}; // { [slideIdx]: Array<slideSnapshot> }
 
 const $ = (id) => document.getElementById(id);
 
@@ -434,6 +490,68 @@ function renderInspector() {
   $('cur-layout-badge').textContent = s.layout;
   const box = $('inspector');
   box.innerHTML = '';
+
+  // 0. Transformación mágica con IA (estilo Gamma) + Deshacer
+  const secAI = document.createElement('div');
+  secAI.className = 'sec';
+  const hasUndo = Array.isArray(slideUndoStack[curIdx]) && slideUndoStack[curIdx].length > 0;
+  secAI.innerHTML = `
+    <div class="sec-title">
+      <span>🪄 Transformar con IA (gpt-6-luna)</span>
+      ${hasUndo ? '<button class="btn btn-sm" id="btn-undo-slide" title="Volver a la versión anterior de esta diapositiva">↩ Deshacer</button>' : ''}
+    </div>
+    <div class="ai-bar">
+      <button class="ai-chip" data-to="table">📋 A Tabla</button>
+      <button class="ai-chip" data-to="bento">🧩 A Infografía</button>
+      <button class="ai-chip" data-to="mindmap">🗺️ A Mapa</button>
+      <button class="ai-chip" data-to="visual-abstract">🧬 A Visual Abstract</button>
+      <button class="ai-chip" data-to="comparison">⚖️ A VS</button>
+      <button class="ai-chip" data-to="process">🪜 A Proceso</button>
+      <button class="ai-chip" data-to="diagram">🔀 A Diagrama</button>
+      <button class="ai-chip" data-to="concept">📝 A Bullets</button>
+    </div>
+  `;
+  box.appendChild(secAI);
+  const undoBtn = secAI.querySelector('#btn-undo-slide');
+  if (undoBtn) {
+    undoBtn.onclick = () => {
+      const prev = slideUndoStack[curIdx].pop();
+      if (prev) {
+        deck.slides[curIdx] = prev;
+        renderAll();
+        setStatus('↩ Cambio deshecho', 'ok');
+      }
+    };
+  }
+  secAI.querySelectorAll('.ai-chip').forEach(btn => {
+    btn.onclick = async () => {
+      const targetLayout = btn.dataset.to;
+      const allChips = secAI.querySelectorAll('.ai-chip');
+      allChips.forEach(c => c.disabled = true);
+      const origTxt = btn.textContent;
+      btn.textContent = '⏳...';
+      setStatus(`Transformando diapositiva a ${targetLayout} con gpt-6-luna...`);
+      try {
+        const snapshot = JSON.parse(JSON.stringify(deck.slides[curIdx]));
+        const model = $('ai-model-select')?.value || 'gpt-6-luna';
+        const r = await api('/api/ai/transform-slide', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slide: snapshot, targetLayout, deckTitle: deck.title, model }),
+        });
+        if (!slideUndoStack[curIdx]) slideUndoStack[curIdx] = [];
+        slideUndoStack[curIdx].push(snapshot);
+        deck.slides[curIdx] = r.slide;
+        renderAll();
+        setStatus(`✔ Convertida a ${targetLayout} (puedes editar todo o pulsar ↩ Deshacer)`, 'ok');
+      } catch (err) {
+        setStatus('Error IA: ' + err.message, 'err');
+      } finally {
+        allChips.forEach(c => c.disabled = false);
+        btn.textContent = origTxt;
+      }
+    };
+  });
 
   // 1. Diseño del bloque
   const secLayout = document.createElement('div');
@@ -600,6 +718,126 @@ function renderInspector() {
     secQ.querySelector('#add-q').onclick = () => { s.questions.push('Nueva opción'); renderInspector(); schedulePreview(); };
     addTextarea(secQ, 'Callout inferior (opcional)', s.callout || '', v => { s.callout = v || null; schedulePreview(); }, 44);
     box.appendChild(secQ);
+  }
+
+  if (s.layout === 'table') {
+    if (!s.table || !Array.isArray(s.table.headers)) s.table = { headers: ['Columna 1', 'Columna 2'], rows: [['Valor 1', 'Valor 2']] };
+    const secT = document.createElement('div');
+    secT.className = 'sec';
+    secT.innerHTML = `
+      <div class="sec-title">
+        <span>📋 Tabla editable (${s.table.rows.length}×${s.table.headers.length})</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" id="add-tcol">+ Col</button>
+          <button class="btn btn-sm" id="add-trow">+ Fila</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto"><table class="tbl-edit" id="tbl-edit"></table></div>
+    `;
+    const tblEl = secT.querySelector('#tbl-edit');
+    const thead = document.createElement('thead');
+    const htr = document.createElement('tr');
+    s.table.headers.forEach((h, ci) => {
+      const th = document.createElement('th');
+      const inp = document.createElement('input');
+      inp.value = h;
+      inp.oninput = () => { s.table.headers[ci] = inp.value; schedulePreview(); };
+      th.appendChild(inp);
+      htr.appendChild(th);
+    });
+    const thDel = document.createElement('th');
+    thDel.style.width = '24px';
+    htr.appendChild(thDel);
+    thead.appendChild(htr);
+    tblEl.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    s.table.rows.forEach((r, ri) => {
+      const tr = document.createElement('tr');
+      s.table.headers.forEach((_, ci) => {
+        const td = document.createElement('td');
+        const inp = document.createElement('input');
+        inp.value = r[ci] || '';
+        inp.oninput = () => { r[ci] = inp.value; schedulePreview(); };
+        td.appendChild(inp);
+        tr.appendChild(td);
+      });
+      const tdDel = document.createElement('td');
+      const bDel = document.createElement('button');
+      bDel.className = 'si-act-btn btn-danger';
+      bDel.textContent = '✕';
+      bDel.onclick = () => { s.table.rows.splice(ri, 1); renderInspector(); schedulePreview(); };
+      tdDel.appendChild(bDel);
+      tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    });
+    tblEl.appendChild(tbody);
+
+    secT.querySelector('#add-tcol').onclick = () => {
+      s.table.headers.push('Nueva col');
+      s.table.rows.forEach(r => r.push(''));
+      renderInspector(); schedulePreview();
+    };
+    secT.querySelector('#add-trow').onclick = () => {
+      s.table.rows.push(s.table.headers.map(() => ''));
+      renderInspector(); schedulePreview();
+    };
+    addTextarea(secT, 'Callout inferior (opcional)', s.callout || '', v => { s.callout = v || null; schedulePreview(); }, 44);
+    box.appendChild(secT);
+  }
+
+  if (s.layout === 'bento' || s.layout === 'visual-abstract') {
+    if (!Array.isArray(s.cards)) s.cards = [];
+    const secCards = document.createElement('div');
+    secCards.className = 'sec';
+    secCards.innerHTML = `<div class="sec-title"><span>${s.layout === 'bento' ? '🧩 Tarjetas Bento' : '🧬 Bloques Visual Abstract'} (${s.cards.length})</span><button class="btn btn-sm" id="add-card">+ Tarjeta</button></div>`;
+    ensureBeatNotes(s, s.cards.length);
+    s.cards.forEach((c, k) => {
+      const item = document.createElement('div');
+      item.className = 'rep-item';
+      item.innerHTML = `<div class="rep-head"><span>Bloque ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+      item.querySelector('button').onclick = () => { s.cards.splice(k, 1); s.beat_notes.splice(k, 1); renderInspector(); schedulePreview(); };
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:64px 1fr;gap:6px';
+      addInput(row, 'Icono', c.icon || '', v => { c.icon = v; schedulePreview(); });
+      addInput(row, 'Etiqueta (tag)', c.tag || '', v => { c.tag = v; schedulePreview(); });
+      item.appendChild(row);
+      addInput(item, 'Titular', c.heading || '', v => { c.heading = v; schedulePreview(); });
+      addTextarea(item, 'Texto', c.text || '', v => { c.text = v; schedulePreview(); }, 46);
+      if (s.layout === 'bento') {
+        const lbl = document.createElement('label');
+        lbl.className = 'fld';
+        lbl.innerHTML = `Ancho de tarjeta <select class="ctrl"><option value="1" ${c.span !== 2 ? 'selected' : ''}>Normal (1 col)</option><option value="2" ${c.span === 2 ? 'selected' : ''}>Destacada (2 cols)</option></select>`;
+        lbl.querySelector('select').onchange = (e) => { c.span = Number(e.target.value); schedulePreview(); };
+        item.appendChild(lbl);
+      }
+      addTextarea(item, `🎙️ Nota de orador (Pulso ${k + 1})`, s.beat_notes[k] || '', v => { s.beat_notes[k] = v; }, 44, 'note-mini');
+      secCards.appendChild(item);
+    });
+    secCards.querySelector('#add-card').onclick = () => { s.cards.push({ icon: '✨', tag: 'CLAVE', heading: 'Nuevo bloque', text: 'Descripción breve.', span: 1 }); s.beat_notes.push(''); renderInspector(); schedulePreview(); };
+    addTextarea(secCards, 'Callout inferior (opcional)', s.callout || '', v => { s.callout = v || null; schedulePreview(); }, 44);
+    box.appendChild(secCards);
+  }
+
+  if (s.layout === 'mindmap') {
+    if (!Array.isArray(s.branches)) s.branches = [];
+    const secM = document.createElement('div');
+    secM.className = 'sec';
+    secM.innerHTML = `<div class="sec-title"><span>🗺️ Mapa Conceptual (${s.branches.length} ramas)</span><button class="btn btn-sm" id="add-branch">+ Rama</button></div>`;
+    addInput(secM, 'Nodo Central (idea principal)', s.center || s.title || '', v => { s.center = v; schedulePreview(); });
+    ensureBeatNotes(s, s.branches.length);
+    s.branches.forEach((br, k) => {
+      const item = document.createElement('div');
+      item.className = 'rep-item';
+      item.innerHTML = `<div class="rep-head"><span>Rama ${k + 1}</span><button class="si-act-btn btn-danger">✕</button></div>`;
+      item.querySelector('button').onclick = () => { s.branches.splice(k, 1); s.beat_notes.splice(k, 1); renderInspector(); schedulePreview(); };
+      addInput(item, 'Título de la rama', br.label || '', v => { br.label = v; schedulePreview(); });
+      addTextarea(item, 'Subpuntos (uno por línea)', (br.items || []).join('\n'), v => { br.items = v.split('\n').map(x => x.trim()).filter(Boolean); schedulePreview(); }, 54);
+      addTextarea(item, `🎙️ Nota de orador (Pulso ${k + 1})`, s.beat_notes[k] || '', v => { s.beat_notes[k] = v; }, 44, 'note-mini');
+      secM.appendChild(item);
+    });
+    secM.querySelector('#add-branch').onclick = () => { s.branches.push({ label: 'Nueva rama', items: ['Subpunto 1', 'Subpunto 2'] }); s.beat_notes.push(''); renderInspector(); schedulePreview(); };
+    box.appendChild(secM);
   }
 
   // 4. Imagen / Visual
@@ -770,6 +1008,54 @@ BLOCK_TEMPLATES.forEach(b => {
 $('btn-add-block').onclick = () => $('block-modal').classList.add('open');
 $('btn-close-modal').onclick = () => $('block-modal').classList.remove('open');
 $('block-modal').onclick = (e) => { if (e.target === $('block-modal')) $('block-modal').classList.remove('open'); };
+
+// Modal Crear con IA desde Temario (.md)
+$('btn-ai-new').onclick = () => $('ai-modal').classList.add('open');
+$('btn-close-ai-modal').onclick = () => $('ai-modal').classList.remove('open');
+$('ai-modal').onclick = (e) => { if (e.target === $('ai-modal')) $('ai-modal').classList.remove('open'); };
+$('ai-file-in').onchange = (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    $('ai-md-text').value = String(r.result || '');
+    if (!$('ai-deck-title').value) $('ai-deck-title').value = f.name.replace(/\.(md|txt)$/i, '');
+    $('ai-modal-status').textContent = `Archivo "${f.name}" cargado (${$('ai-md-text').value.length} caracteres).`;
+  };
+  r.readAsText(f);
+};
+$('btn-run-ai-deck').onclick = async () => {
+  const markdown = $('ai-md-text').value.trim();
+  if (markdown.length < 30) {
+    $('ai-modal-status').textContent = 'Pega o carga un temario antes de generar.';
+    return;
+  }
+  const btn = $('btn-run-ai-deck');
+  const model = $('ai-model-select').value || 'gpt-6-luna';
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando con ' + model + '...';
+  $('ai-modal-status').textContent = 'Diseñando diapositivas, tablas, infografías y notas de orador... (15–35 s)';
+  try {
+    const r = await api('/api/ai/generate-deck', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        markdown,
+        title: $('ai-deck-title').value.trim(),
+        theme: $('ai-theme-select').value,
+        model,
+      }),
+    });
+    $('ai-modal').classList.remove('open');
+    await loadDeckList(r.slug);
+    setStatus(`✨ Presentación generada con ${model} (${r.deck.slides.length} diapos)`, 'ok');
+  } catch (err) {
+    $('ai-modal-status').textContent = '✖ Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Generar presentación';
+  }
+};
 
 // Atajo Ctrl+S para guardar
 window.addEventListener('keydown', (e) => {

@@ -274,6 +274,22 @@ ul.bullets li::before {
 .l-quiz .quiz-table th {
   background: rgba(255,255,255,.07); color: var(--accent); font-weight: 700; text-transform: uppercase; font-size: 19px; letter-spacing: .06em;
 }
+.data-table {
+  margin-top: 26px; border-collapse: collapse; width: 100%; max-width: 100%;
+  background: rgba(255,255,255,.04); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden;
+  font-size: 24px; color: var(--fg); box-shadow: 0 12px 32px rgba(0,0,0,.18);
+}
+.data-table th, .data-table td {
+  padding: 18px 20px; border-bottom: 1px solid var(--card-border); text-align: left; vertical-align: middle; line-height: 1.35;
+}
+.data-table th {
+  background: rgba(255,255,255,.08); color: var(--accent); font-weight: 700; font-size: 20px; letter-spacing: .02em;
+}
+.data-table th:not(:first-child), .data-table td:not(:first-child) { text-align: center; }
+.data-table td:not(:first-child) { font-variant-numeric: tabular-nums; }
+.data-table tbody tr:nth-child(even) { background: rgba(255,255,255,.025); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.l-split .txt.full-width { flex: 1 1 100%; max-width: 100%; width: 100%; }
 .l-quiz .qs { display: flex; flex-direction: column; gap: 24px; margin-top: 32px; max-width: 1560px; }
 .l-quiz .qs.qs-grid {
   display: grid;
@@ -615,3 +631,100 @@ ul.bullets li::before {
 /* Los enlaces largos deben partirse sin recortar la información de la tarjeta. */
 .l-split .body { overflow-wrap: anywhere; }
 .l-split[data-kicker="Ejemplo de los apuntes"] .body { font-size: 24px; line-height: 1.35; }
+
+/* ===== Bloques visuales avanzados estilo Gamma (Tabla, Bento, Mapa Conceptual, Visual Abstract) ===== */
+.l-table h2, .l-bento h2, .l-mindmap h2, .l-visual-abstract h2 { font-size: 56px; line-height: 1.12; max-width: 1580px; }
+.l-table .body, .l-visual-abstract .body { font-size: 26px; margin-top: 14px; max-width: 1480px; }
+
+/* Tabla comparativa editable */
+.g-table-wrap {
+  margin-top: 26px; width: 100%; max-width: 1620px; border-radius: 20px; overflow: hidden;
+  background: var(--card); border: 1px solid var(--card-border); box-shadow: var(--shadow-lg);
+}
+.g-table { width: 100%; border-collapse: collapse; font-size: 24px; line-height: 1.35; }
+.g-table th {
+  background: linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+  color: var(--accent); font-family: var(--font-head); font-weight: 800; font-size: 22px;
+  text-transform: uppercase; letter-spacing: .06em; padding: 20px 26px; text-align: left;
+  border-bottom: 2px solid var(--accent);
+}
+.g-table td {
+  padding: 18px 26px; color: var(--fg-soft); border-bottom: 1px solid var(--card-border); vertical-align: top;
+}
+.g-table td.g-td-lead { color: var(--fg); font-weight: 700; }
+.g-table tbody tr:last-child td { border-bottom: none; }
+.g-table tbody tr:nth-child(even) { background: rgba(255,255,255,.025); }
+
+/* Infografía Bento Grid */
+.bento-grid {
+  display: grid; gap: 22px; margin-top: 28px; width: 100%; max-width: 1620px;
+}
+.bento-grid.bcols-2 { grid-template-columns: repeat(2, 1fr); }
+.bento-grid.bcols-3 { grid-template-columns: repeat(3, 1fr); }
+.bento-card {
+  padding: 28px 32px; display: flex; flex-direction: column; gap: 10px;
+  border-top: 4px solid var(--accent);
+}
+.bento-card:nth-child(2n) { border-top-color: var(--accent-2, var(--accent)); }
+.bento-card.bento-span2 { grid-column: span 2; }
+.bento-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bento-icon {
+  font-size: 32px; width: 52px; height: 52px; border-radius: 14px;
+  background: rgba(255,255,255,.07); border: 1px solid var(--card-border);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.bento-tag {
+  font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--accent); background: rgba(255,255,255,.05); padding: 6px 14px; border-radius: 999px;
+}
+.bento-card h3 { font-size: 30px; line-height: 1.2; margin: 4px 0 0; color: var(--fg); }
+.bento-card p { font-size: 23px; line-height: 1.38; color: var(--fg-soft); }
+
+/* Mapa conceptual editable (Mindmap) */
+.mm-wrap {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 38px;
+  margin-top: 28px; width: 100%; max-width: 1640px; flex: 1; min-height: 0;
+}
+.mm-side { display: flex; flex-direction: column; gap: 20px; }
+.mm-center { display: flex; align-items: center; justify-content: center; position: relative; }
+.mm-hub {
+  width: 300px; min-height: 190px; padding: 28px 30px; border-radius: 28px;
+  background: var(--grad); color: #fff; font-family: var(--font-head); font-size: 32px; font-weight: 800;
+  line-height: 1.2; text-align: center; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 20px 60px var(--accent-glow);
+}
+.mm-branch {
+  background: var(--card); border: 1px solid var(--card-border); border-left: 6px solid var(--accent);
+  border-radius: 18px; padding: 20px 26px; box-shadow: var(--shadow);
+}
+.mm-right .mm-branch { border-left: 1px solid var(--card-border); border-right: 6px solid var(--accent-2, var(--accent)); }
+.mm-b-head { font-family: var(--font-head); font-size: 27px; font-weight: 800; color: var(--fg); margin-bottom: 10px; }
+.mm-branch ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.mm-branch li { font-size: 21px; line-height: 1.32; color: var(--fg-soft); }
+
+/* Visual Abstract académico */
+.va-flow {
+  display: grid; gap: 26px; margin-top: 28px; width: 100%; max-width: 1640px;
+}
+.va-flow.n2 { grid-template-columns: repeat(2, 1fr); }
+.va-flow.n3 { grid-template-columns: repeat(3, 1fr); }
+.va-flow.n4 { grid-template-columns: repeat(4, 1fr); }
+.va-card {
+  padding: 28px 26px; display: flex; flex-direction: column; gap: 14px; position: relative;
+  border-top: 5px solid var(--accent);
+}
+.va-card:nth-child(2) { border-top-color: var(--accent-2, var(--accent)); }
+.va-card:nth-child(3) { border-top-color: var(--accent-3, var(--accent)); }
+.va-card:nth-child(4) { border-top-color: #10b981; }
+.va-card:not(:last-child)::after {
+  content: '➔'; position: absolute; right: -22px; top: 50%; transform: translateY(-50%);
+  font-size: 28px; color: var(--accent); font-weight: 800; z-index: 5;
+}
+.va-head { display: flex; align-items: center; gap: 12px; }
+.va-icon {
+  width: 48px; height: 48px; border-radius: 14px; background: var(--grad); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; flex: 0 0 48px;
+}
+.va-tag { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); }
+.va-card h3 { font-size: 28px; line-height: 1.2; color: var(--fg); }
+.va-card p { font-size: 22px; line-height: 1.38; color: var(--fg-soft); }
